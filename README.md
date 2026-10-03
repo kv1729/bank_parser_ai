@@ -1,68 +1,41 @@
 # Bank Statement Parser
 
-A production-oriented prototype for parsing bank statements using local LLMs via Ollama.
+Turns text-based bank statement PDFs into validated, structured transaction data.
 
-## Features
+The approach is deterministic extraction per bank layout, checked by accounting invariants: every row must satisfy *previous balance − debit + credit = balance*, and totals must match the bank's own summary. LLMs, OCR and MCP are deferred until a benchmark shows they help.
 
-- PDF text extraction with caching
-- Region segmentation
-- Hybrid heuristic + LLM extraction
-- JSON validation and retry
-- Performance tracking
+## Status
 
-## Architecture
+Phase 0 (output contract and validation) is mostly done; Phase 1 (deterministic extraction) has early evidence. See `Bank_Statement_Parser_PLAN.md` §25.
 
-Pipeline:
-1. PDF text extraction (pdfminer.six + pdfplumber)
-2. Cache extracted text
-3. Region segmentation (header, account_details, transaction)
-4. Heuristic extraction (bank_name, account_number, IFSC)
-5. LLM extraction (account_holder_name)
-6. JSON validation
-7. Metrics logging
+- Typed `Statement` / `Transaction` schema with `Decimal` money and a strict JSON loader.
+- `validate_balance_chain` reporting `PASS` / `WARN` / `FAIL` / `SKIP` with reason codes, rows and pages.
+- Experiment on a real 9-page SBI statement: 81 transactions, balance chain and the bank's summary totals all reconcile; ~1.4 s per statement.
+- Not yet: an end-to-end parser/CLI, layout templates, content-based document IDs.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `bank_parser/` | Schema and validation (new code) |
+| `tests/` | pytest suite; expected-output fixtures are local-only |
+| `experiments/` | Small experiments backing entries in `DECISIONS.md` |
+| `sample_data/` | Synthetic sample PDFs (real statements are gitignored) |
+| `Bank_Statement_Parser_PLAN.md` | Plan and current status |
+| `DECISIONS.md` | Decision log with evidence |
+| `docs/ARCHITECTURE_REVIEW.md` | Initial architecture review |
+| `*.py` at the root | Original prototype, kept for reference |
 
 ## Setup
 
-1. Install Ollama and pull the model:
-   ```
-   ollama pull qwen:4b
-   ```
-
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-
-3. Place a sample PDF in `sample_data/sample_statement.pdf`
-
-## Running
-
 ```
-python app.py
+python -m venv venv
+venv\Scripts\python -m pip install -r requirements.txt -r requirements-dev.txt
+venv\Scripts\python -m pytest
 ```
 
-## Output
+On a fresh clone most tests are skipped, because expected-output fixtures contain statement data and are not committed. See `tests/fixtures/README.md`.
 
-- Extracted data: `outputs/output.json`
-- Metrics: `outputs/metrics.json`
-- Cached text: `cache/extracted.txt`
-- Segmented regions: `cache/segmented.json`
+## Data handling
 
-## Example Output
-
-```json
-{
-    "bank_name": "HDFC BANK",
-    "account_holder_name": "John Doe",
-    "account_number": "1234567890",
-    "ifsc": "HDFC0001234"
-}
-```
-
-## Future Improvements
-
-- Add transaction extraction
-- Improve region segmentation with ML
-- Add more validation rules
-- Support multiple PDF formats
-- Add GUI interface
+Real statements, PDF passwords and parsed outputs are never committed. Processing is local; no statement data is sent to external services.

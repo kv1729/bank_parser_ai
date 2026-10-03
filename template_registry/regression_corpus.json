@@ -1,0 +1,10 @@
+[
+  {
+    "path": "sample_data/SBI_Bank_Statement_Chenna_Reddy.pdf",
+    "layout": "sbi/layout-5fbb871c"
+  },
+  {
+    "path": "sample_data/sample_statement.pdf",
+    "layout": "hdfc/layout-f2e8110d"
+  }
+]

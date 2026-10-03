@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statement Parser</title>
+<style>
+  :root { --bg:#f7f7f5; --fg:#1d1d1b; --muted:#6b6b66; --line:#dcdcd6; --card:#fff;
+          --ok:#1f7a3a; --warn:#9a6700; --bad:#b42318; --accent:#2f5bd3; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161615; --fg:#ececea; --muted:#9d9d97; --line:#33332f; --card:#1f1f1d;
+            --ok:#4cc172; --warn:#e0a92e; --bad:#f2725f; --accent:#7f9cf5; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 15px; margin: 24px 0 8px; }
+  .muted { color: var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:12px; }
+  form { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  input[type=password] { padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  button { padding:6px 14px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:12px; }
+  td.num { text-align:right; white-space:nowrap; }
+  .scroll { overflow-x:auto; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid currentColor; }
+  .EXTRACTED, .PASS, .ACCEPTED { color:var(--ok); }
+  .NEEDS_REVIEW, .WARN, .HUMAN_REVIEW, .NEEDS_PASSWORD, .NEEDS_OCR, .RUNNING, .QUEUED, .PROCESSING, .SKIP { color:var(--warn); }
+  .FAILED, .FAIL { color:var(--bad); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:4px 24px; }
+  .kv { padding:4px 0; } .kv b { display:block; font-size:12px; color:var(--muted); font-weight:600; }
+  a { color: var(--accent); cursor: pointer; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Statement Parser</h1>
+  <div class="muted">Text-based PDF bank statements. Processed locally; nothing is sent to external services.</div>
+
+  <div class="card">
+    <form id="upload">
+      <input type="file" name="file" accept="application/pdf" required>
+      <input type="password" name="password" placeholder="PDF password (if any)" autocomplete="off">
+      <button type="submit">Upload</button>
+      <span id="upload-msg" class="muted"></span>
+    </form>
+  </div>
+
+  <h2>Documents</h2>
+  <div class="card scroll"><table id="docs"><thead><tr><th>Uploaded</th><th>File</th><th>Pages</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+
+  <section id="detail" hidden>
+    <h2 id="detail-title">Statement</h2>
+    <div class="card"><div class="grid" id="header"></div></div>
+    <h2>Validation</h2>
+    <div class="card scroll"><table id="checks"><thead><tr><th>Check</th><th>Status</th><th>Rows</th><th>Issues</th></tr></thead><tbody></tbody></table></div>
+    <h2>Template learning</h2>
+    <div class="card" id="job"></div>
+    <h2>Transactions <span id="txn-count" class="muted"></span></h2>
+    <div class="card scroll"><table id="txns"><thead><tr><th>#</th><th>Date</th><th>Description</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Balance</th><th>Page</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<script>
+// All statement data is inserted with textContent, never innerHTML: descriptions are untrusted text.
+const $ = s => document.querySelector(s);
+function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function pill(v) { return el("span", v || "-", "pill " + (v || "")); }
+let current = null, timer = null;
+
+$("#upload").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  $("#upload-msg").textContent = "Uploading…";
+  const r = await fetch("/api/documents", { method: "POST", body: fd });
+  const j = await r.json();
+  ev.target.reset();
+  $("#upload-msg").textContent = r.ok ? (j.duplicate ? "Already uploaded — showing existing document." : "Uploaded.") : (j.detail || "Upload failed");
+  if (r.ok) { await loadDocs(); show(j.document_id); }
+});
+
+async function loadDocs() {
+  const docs = await (await fetch("/api/documents")).json();
+  const tb = $("#docs tbody"); tb.replaceChildren();
+  for (const d of docs) {
+    const tr = el("tr");
+    tr.append(el("td", d.created_at.replace("T", " ").slice(0, 16)));
+    const a = el("a", d.original_name || d.id.slice(0, 12)); a.onclick = () => show(d.id);
+    const td = el("td"); td.append(a); tr.append(td);
+    tr.append(el("td", d.page_count ?? "-"));
+    const ts = el("td"); ts.append(pill(d.status)); tr.append(ts);
+    tb.append(tr);
+  }
+}
+
+async function show(id) {
+  current = id; clearTimeout(timer);
+  const r = await fetch("/api/documents/" + id); if (!r.ok) return;
+  const { document: doc, extraction: ex, template_job: job } = await r.json();
+  $("#detail").hidden = false;
+  $("#detail-title").textContent = (doc.original_name || "Statement") + " — " + doc.status;
+
+  const hdr = $("#header"); hdr.replaceChildren();
+  const st = ex && ex.statement;
+  const h = (st && st.header) || {};
+  const fields = [["Bank", h.bank_name], ["Bank address", h.bank_address], ["Account holder", h.account_holder_name],
+    ["Holder address", h.account_holder_address], ["Account number", h.account_number], ["IFSC", h.ifsc],
+    ["Period", h.period_start ? h.period_start + " → " + h.period_end : null], ["Opening balance", h.opening_balance],
+    ["Closing balance", h.closing_balance], ["Extraction path", ex ? ex.workflow + " · " + ex.strategy + (ex.template_id ? " · " + ex.template_id : "") : null],
+    ["Status", doc.error || doc.status]];
+  for (const [k, v] of fields) { const d = el("div", null, "kv"); d.append(el("b", k), el("span", v ?? "—")); hdr.append(d); }
+  if (doc.status === "NEEDS_PASSWORD") {
+    const f = el("form"); const i = el("input"); i.type = "password"; i.name = "password"; i.placeholder = "PDF password";
+    const b = el("button", "Unlock"); f.append(i, b);
+    f.onsubmit = async e => { e.preventDefault(); await fetch(`/api/documents/${id}/password`, { method: "POST", body: new FormData(f) }); show(id); };
+    hdr.append(f);
+  }
+
+  const cb = $("#checks tbody"); cb.replaceChildren();
+  for (const c of (ex && ex.report && ex.report.checks) || []) {
+    const tr = el("tr"); tr.append(el("td", c.check)); const s = el("td"); s.append(pill(c.status)); tr.append(s);
+    tr.append(el("td", c.rows_checked));
+    tr.append(el("td", c.issues.map(i => i.code + (i.row_index != null ? ` (row ${i.row_index})` : "")).join(", ") || "—"));
+    cb.append(tr);
+  }
+
+  const jd = $("#job"); jd.replaceChildren();
+  if (job) { jd.append(pill(job.status), el("span", "  " + (job.template_id || "") + (job.reason ? " — " + job.reason : "") + (job.duration_ms ? ` (${Math.round(job.duration_ms)} ms)` : ""))); }
+  else jd.append(el("span", "Not needed — a known template matched this layout.", "muted"));
+
+  const tb = $("#txns tbody"); tb.replaceChildren();
+  const txns = (st && st.transactions) || [];
+  $("#txn-count").textContent = txns.length ? `(${txns.length})` : "";
+  for (const t of txns) {
+    const tr = el("tr");
+    tr.append(el("td", t.row_index + 1), el("td", t.txn_date), el("td", t.description), el("td", t.reference ?? ""),
+      el("td", t.debit ?? "", "num"), el("td", t.credit ?? "", "num"), el("td", t.balance ?? "", "num"), el("td", t.page ?? ""));
+    tb.append(tr);
+  }
+  const busy = ["RECEIVED", "PROCESSING"].includes(doc.status) || (job && ["QUEUED", "RUNNING"].includes(job.status));
+  if (busy) timer = setTimeout(() => { show(id); loadDocs(); }, 1500);
+}
+loadDocs();
+</script>
+</body>
+</html>

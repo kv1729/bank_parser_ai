@@ -58,7 +58,7 @@ def test_malformed_fields_rejected(sbi_raw, field, bad):
 
 
 def test_unknown_schema_version_rejected(sbi_raw):
-    sbi_raw["schema_version"] = "2"
+    sbi_raw["schema_version"] = "99"
     with pytest.raises(SchemaError):
         statement_from_dict(sbi_raw)
 

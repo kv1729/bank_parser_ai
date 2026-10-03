@@ -1,6 +1,6 @@
 # Bank Parser AI — Architecture Review
 
-*Written 2026-10-02 · updated 2026-10-03 — see [Since this review](#since-this-review)*
+*Written 2026-10-02 · updated 2026-10-03 — see [Since this review](#since-this-review). The current architecture is [ARCHITECTURE.md](ARCHITECTURE.md).*
 
 The current repo is a ~220-line prototype that extracts four header fields and no transactions, so it should be treated as a fresh start. Phase 1 should be deterministic per-bank templates checked by balance arithmetic, with LLMs and MCP deferred until a benchmark shows they help.
 

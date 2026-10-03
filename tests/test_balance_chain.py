@@ -114,3 +114,50 @@ def test_statement_without_running_balance_is_skipped_not_failed(sbi_raw):
 def test_empty_statement_is_skipped(sbi_statement):
     result = validate_balance_chain(replace(sbi_statement, transactions=()))
     assert result.status is Status.SKIP
+
+
+# --- reconciliation / rows / header validators -------------------------------------------------
+
+from bank_parser.schema import StatementSummary
+from bank_parser.validation import validate_header, validate_reconciliation, validate_rows, validate_statement
+
+
+def _summary_for(statement):
+    debits = [t.debit for t in statement.transactions if t.debit is not None]
+    credits = [t.credit for t in statement.transactions if t.credit is not None]
+    return StatementSummary(sum(debits), sum(credits), len(debits), len(credits))
+
+
+def test_reconciliation_passes_with_true_totals(sbi_statement):
+    s = replace(sbi_statement, summary=_summary_for(sbi_statement),
+                header=replace(sbi_statement.header, closing_balance=sbi_statement.transactions[-1].balance))
+    result = validate_reconciliation(s)
+    assert result.status is Status.PASS and result.rows_checked == 6
+
+
+def test_reconciliation_catches_a_missing_row(sbi_statement):
+    s = replace(sbi_statement, summary=_summary_for(sbi_statement))
+    dropped = replace(s, transactions=s.transactions[:14] + s.transactions[15:])
+    result = validate_reconciliation(dropped)
+    assert result.status is Status.FAIL
+    assert {"total_debits_mismatch", "debit_count_mismatch"} <= set(_codes(result))
+
+
+def test_reconciliation_skipped_when_document_prints_no_totals(sbi_statement):
+    assert validate_reconciliation(sbi_statement).status is Status.SKIP
+
+
+def test_rows_flag_both_debit_and_credit(sbi_statement):
+    s = _with_row(sbi_statement, 0, credit=Decimal("1.00"))
+    assert "both_debit_and_credit" in _codes(validate_rows(s))
+
+
+def test_header_flags_invalid_ifsc(sbi_statement):
+    s = replace(sbi_statement, header=replace(sbi_statement.header, ifsc="SBIN1234"))
+    assert validate_header(s).status is Status.FAIL
+
+
+def test_overall_report(sbi_statement):
+    report = validate_statement(sbi_statement)
+    assert report.status is Status.PASS and report.verified
+    assert validate_statement(_with_row(sbi_statement, 3, credit=Decimal("1"))).status is Status.FAIL

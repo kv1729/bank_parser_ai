@@ -974,3 +974,27 @@ Details and evidence for each item are in `DECISIONS.md`.
 3. Latency experiment: word positions + fixed column boundaries vs full table finding; adopt only if output is identical.
 4. First versioned SBI templates (synthetic layout and current layout) behind a layout detector.
 5. HDFC sample ground truth.
+
+## Status update — product architecture (2026-10-03)
+
+Implemented per `INSTRUCTIONS.md`; design in `docs/ARCHITECTURE.md`, evidence in `DECISIONS.md` D-007 – D-013.
+
+| Area | Status |
+|---|---|
+| Phase 0 #9 content-based document IDs | Done — sha256 document IDs, content-addressed store (D-012) |
+| Phase 1 deterministic text-PDF MVP | Done for 3 layouts (synthetic SBI, synthetic HDFC, real SBI) — `word_columns` engine (D-010) |
+| Templates, versioning, registry | Done — append-only, exclusive-create (D-009) |
+| Validation layer (§11) | Balance chain, reconciliation vs printed totals, rows, header; capability-based `SKIP` |
+| Unknown layouts without waiting (Workflow 1) | Done — inferred layout, verified by arithmetic |
+| Template agent (Workflow 2, Phase 3) | Done with a deterministic proposer; LLM proposer slot disabled (D-011) |
+| Persistence / service / app (Phase 5) | SQLite, FastAPI, upload UI; no auth yet (D-013) |
+| Benchmark harness (Phase 2) | Latency harness done (`experiments/benchmark.py`); accuracy corpus still 3 documents |
+| OCR (Phase 4), MCP interface (Phase 6) | Not started |
+
+**Next:**
+1. Decide on PyMuPDF licensing (D-007).
+2. Grow the labelled corpus toward PLAN §12 (≥20 statements, ~5 banks).
+3. Handle layouts without ruled cells and without header text.
+4. Merge classification into the extraction pass.
+5. Make background jobs survive restarts.
+6. Add authentication before any non-local deployment.

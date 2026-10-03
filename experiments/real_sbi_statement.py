@@ -50,7 +50,7 @@ def run(debit_col=4, credit_col=5, verbose=False):
             description=" ".join((r[2] or "").split()), reference=(r[3] or "").strip() or None,
             debit=money(r[debit_col]), credit=money(r[credit_col]), balance=money(r[6])))
     opening = money(summ[0]); closing = money(summ[5])
-    st = Statement(header=StatementHeader(bank="SBI", currency="INR", opening_balance=opening, closing_balance=closing), transactions=tuple(txns))
+    st = Statement(header=StatementHeader(bank_name="State Bank of India", currency="INR", opening_balance=opening, closing_balance=closing), transactions=tuple(txns))
     t["normalize"] = time.perf_counter() - t2
     t3 = time.perf_counter()
     res = validate_balance_chain(st)

@@ -3,3 +3,11 @@ __pycache__/
 cache/
 outputs/
 .ipynb_checkpoints/
+.pytest_cache/
+
+# Real financial statements - never commit
+sample_data/AccountStatement_02102026_120158.pdf
+sample_data/.pdf_password
+
+# Expected/parsed statement outputs contain statement data - keep local only
+*.expected.json

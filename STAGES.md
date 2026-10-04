@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 6 — Repository restructure (branch `stage-06-restructure`). **Next:** Stage 7 — Accuracy corpus.
+**Now:** between stages — Stage 7 (Accuracy corpus) is next and needs statements from the owner. Open owner items are listed under Stage 7.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -11,7 +11,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 3 | Real-statement experiment | Done | 2026-10-02 | 2026-10-02 |
 | 4 | Product architecture | Done | 2026-10-03 | 2026-10-03 |
 | 5 | Documentation & developer workflow | Done (owner review pending) | 2026-10-04 | 2026-10-04 |
-| 6 | Repository restructure | In progress | 2026-10-04 | — |
+| 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
 | 7 | Accuracy corpus & benchmark | Not started | — | — |
 | 8 | Robustness & speed | Not started | — | — |
 | 9 | LLM-assisted template proposer (only if Stage 7/8 shows a need) | Not started | — | — |
@@ -81,7 +81,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Repository structure decision (owner chose backend/ + frontend/; carried out in Stage 6)
 - **Exit criteria:** The owner confirms the guide answers "how does it work, what is used where, what is the status".
 
-## 6. Repository restructure — In progress
+## 6. Repository restructure — Done
 
 - **Goal:** A production-style layout: `backend/` (src layout) + `frontend/`, docs consolidated, prototype archived, CI.
 - **Deliverables:**
@@ -92,7 +92,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Docs updated
   - [x] D-014
   - [x] Diagrams re-rendered against the new paths (pinned to f2579cd)
-  - [ ] Pull request merged
+  - [x] Pull request merged (#4); CI green on `main`
 - **Exit criteria:**
   - All tests pass, both locally and without PyMuPDF as in CI.
   - App, benchmark and privacy gate work from the new locations.
@@ -106,6 +106,12 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - An accuracy report: fully-correct %, row precision/recall, field accuracy
 - **Exit criteria:** A benchmark report exists, and every failure is categorised.
 - **Depends on:** the owner supplying or consenting to statements.
+- **Open owner items before or during this stage:**
+  - [ ] Review `docs/PROJECT_GUIDE.md` (closes Stage 5).
+  - [ ] PyMuPDF licence: AGPL compliance, commercial licence, or stay on pdfplumber (D-007).
+  - [ ] Commit the real-layout template from `data/templates/`? It holds labels and geometry only.
+  - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
+  - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
 
 ## 8. Robustness & speed — Not started
 

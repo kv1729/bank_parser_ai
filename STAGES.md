@@ -91,7 +91,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] CI workflow
   - [x] Docs updated
   - [x] D-014
-  - [ ] Diagrams re-rendered against the new paths
+  - [x] Diagrams re-rendered against the new paths (pinned to f2579cd)
   - [ ] Pull request merged
 - **Exit criteria:**
   - All tests pass, both locally and without PyMuPDF as in CI.

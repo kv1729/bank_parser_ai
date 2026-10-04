@@ -6,7 +6,7 @@ Upload a text-based bank statement PDF; get validated structured data back: acco
 - **Unknown layouts** are extracted immediately by inferring the table layout. In parallel, a bounded template-learning agent turns the layout into a new template, so the next statement of that layout takes the known path. Extraction never waits for learning.
 - **Validation is arithmetic:** every row must satisfy *previous balance − debit + credit = balance*, and totals must match the summary the bank prints. Money is `Decimal` throughout.
 
-Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Decisions and evidence: [`DECISIONS.md`](DECISIONS.md). Plan: [`Bank_Statement_Parser_PLAN.md`](Bank_Statement_Parser_PLAN.md).
+**Start here:** [`docs/PROJECT_GUIDE.md`](docs/PROJECT_GUIDE.md) (how it works) · [`STAGES.md`](STAGES.md) (progress). Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), diagrams in [`docs/diagrams/`](docs/diagrams/). Decisions and evidence: [`DECISIONS.md`](DECISIONS.md). Plan: [`Bank_Statement_Parser_PLAN.md`](Bank_Statement_Parser_PLAN.md).
 
 ## Quick start
 

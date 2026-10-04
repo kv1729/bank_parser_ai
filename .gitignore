@@ -5,9 +5,8 @@ outputs/
 .ipynb_checkpoints/
 .pytest_cache/
 
-# Real financial statements - never commit
-sample_data/AccountStatement_02102026_120158.pdf
-sample_data/.pdf_password
+# Local private statements and their passwords - never commit (whole folder)
+sample_data/
 
 # Expected/parsed statement outputs contain statement data - keep local only
 *.expected.json

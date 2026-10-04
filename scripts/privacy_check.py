@@ -6,7 +6,7 @@ Blocks a commit when staged files (or the commit message) contain:
     archify receipts, or any PDF other than the committed synthetic samples;
   - the PDF password (sample_data/.pdf_password);
   - any string in .git/info/sensitive-strings (local only, never committed;
-    refresh with scripts/refresh_sensitive_strings.py);
+    refresh with backend/scripts/refresh_sensitive_strings.py);
   - email addresses or PAN-shaped strings not on the allowlist below.
 
 Never prints the sensitive value itself -- only the file and which rule matched.
@@ -24,14 +24,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 FORBIDDEN_PATHS = (
-    "data/*", "*.db", "*.sqlite", "*.sqlite3", ".env", ".env.*",
+    "data/*", "sample_data/*", "*.db", "*.sqlite", "*.sqlite3", ".env", ".env.*",
     "sample_data/.pdf_password", "*.expected.json",
     "docs/diagrams/*.finalize.json", "docs/diagrams/*.finalize-summary.json",
     "docs/diagrams/*.delivery.json", "docs/diagrams/*.browser-check.json", "docs/diagrams/*/review-*/*",
 )
-ALLOWED_PDFS = {
-    "sample_data/SBI_Bank_Statement_Chenna_Reddy.pdf",
-    "sample_data/sample_statement.pdf",
+ALLOWED_PDFS = {   # synthetic samples only
+    "backend/tests/fixtures/pdfs/sbi_synthetic.pdf",
+    "backend/tests/fixtures/pdfs/hdfc_synthetic.pdf",
 }
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 PAN_RE = re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b")

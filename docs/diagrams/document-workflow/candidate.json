@@ -10,7 +10,7 @@
       "url": "https://github.com/kv1729/bank_parser_ai.git",
       "provider": "github",
       "link_mode": "web",
-      "revision": "4331ca7689fe461a791bbbcedd9305d3d372dbd2"
+      "revision": "f2579cd9d9accc5da6cf0c3900721ef36a8f42c5"
     }
   },
   "lanes": [
@@ -82,7 +82,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/storage/files.py",
+          "path": "backend/src/bank_parser/storage/files.py",
           "line": 43,
           "end_line": 70
         }
@@ -98,7 +98,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/pipeline.py",
+          "path": "backend/src/bank_parser/pipeline.py",
           "line": 122,
           "end_line": 138
         }
@@ -114,7 +114,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/pipeline.py",
+          "path": "backend/src/bank_parser/pipeline.py",
           "line": 140,
           "end_line": 151
         }
@@ -130,7 +130,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/extraction/engine.py",
+          "path": "backend/src/bank_parser/extraction/engine.py",
           "line": 59,
           "end_line": 81
         }
@@ -146,7 +146,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/validation.py",
+          "path": "backend/src/bank_parser/core/validation.py",
           "line": 265,
           "end_line": 277
         }
@@ -162,7 +162,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/pipeline.py",
+          "path": "backend/src/bank_parser/pipeline.py",
           "line": 173,
           "end_line": 188
         }
@@ -178,7 +178,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/extraction/unknown.py",
+          "path": "backend/src/bank_parser/extraction/unknown.py",
           "line": 19,
           "end_line": 50
         }
@@ -194,7 +194,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/learning/proposers.py",
+          "path": "backend/src/bank_parser/learning/proposers.py",
           "line": 58,
           "end_line": 99
         }
@@ -210,7 +210,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/learning/agent.py",
+          "path": "backend/src/bank_parser/learning/agent.py",
           "line": 154,
           "end_line": 160
         }
@@ -226,7 +226,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/templates/registry.py",
+          "path": "backend/src/bank_parser/templates/registry.py",
           "line": 86,
           "end_line": 106
         }
@@ -242,7 +242,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/pipeline.py",
+          "path": "backend/src/bank_parser/pipeline.py",
           "line": 123,
           "end_line": 138
         }
@@ -258,7 +258,7 @@
       "width": 140,
       "sources": [
         {
-          "path": "bank_parser/learning/agent.py",
+          "path": "backend/src/bank_parser/learning/agent.py",
           "line": 151,
           "end_line": 154
         }

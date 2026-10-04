@@ -1,6 +1,6 @@
 # Bank Statement Parser — Architecture
 
-*As of 2026-10-03. Evidence for every choice is in `DECISIONS.md` (D-007 – D-013).*
+*As of 2026-10-04. Evidence for every choice is in [`DECISIONS.md`](DECISIONS.md) (D-007 – D-014). Repository layout: see the root `README.md`.*
 
 A user uploads a text-based bank statement PDF; the system returns validated structured data: account/statement header, every transaction, and a validation report. Unknown layouts are extracted **immediately**; a separate, bounded template-learning workflow turns each new layout into a reusable deterministic template **in parallel**, never blocking extraction.
 
@@ -52,30 +52,30 @@ Detect layout: markers of every approved template vs. text of pages 1, 2 and las
 
 The agent's loop structure is in place; its current proposer is deterministic, because all three layouts seen so far (two synthetic, one real) were learned without an LLM. An LLM is added only when a layout defeats the heuristics, and then sees only a redacted layout summary, never statement content.
 
-## Components (`bank_parser/`)
+## Components (`backend/src/bank_parser/`)
 
 | Module | Responsibility |
 | --- | --- |
 | `pdf/` | Backend-neutral words + rectangles; `pdfplumber` (MIT, default) or `pymupdf` (AGPL, ~15× faster, optional); classification |
-| `schema.py` | `Statement`, `StatementHeader`, `Transaction`, `StatementSummary`, `Provenance`; `Decimal` money; JSON v2 (v1 still loads) |
+| `core/schema.py` | `Statement`, `StatementHeader`, `Transaction`, `StatementSummary`, `Provenance`; `Decimal` money; JSON v2 (v1 still loads) |
 | `templates/` | Template model (pure data) and append-only versioned registry |
-| `detection.py` | Marker matching |
+| `extraction/detection.py` | Marker matching |
 | `extraction/table.py` | `word_columns` engine: rows from positioned words, multi-line descriptions, wrapped dates, rows split across pages, footer detection |
 | `extraction/header.py` | Header rules: `regex` and positional `region` rules |
 | `extraction/inference.py`, `unknown.py` | Unknown-layout inference and Workflow 1 |
 | `extraction/generic_rules.py` | Layout-independent header rules; bank identity from the account's IFSC |
-| `validation.py` | Balance chain, reconciliation, rows, header → `PASS / WARN / FAIL / SKIP` report |
+| `core/validation.py` | Balance chain, reconciliation, rows, header → `PASS / WARN / FAIL / SKIP` report |
 | `learning/` | Template agent, proposers, privacy-safe markers |
 | `storage/` | Content-addressed file store, SQLite |
 | `pipeline.py` | Orchestration; separate extraction and learning pools |
-| `app/` | FastAPI + single-page UI |
+| `api/` | FastAPI routes; the single-page UI lives in top-level `frontend/` |
 
 ## Templates
 
 A template is the extraction contract for one bank **layout** at one **version**: identity (`bank_code`, `layout_id`, `version`), markers, column boundaries and roles, date formats, amount representation, header rules, required validation checks, provenance and regression status. It is JSON data; it contains no code and no personal data.
 
 ```text
-template_registry/<bank>/<layout>/v1.json   committed, reviewed
+backend/template_registry/<bank>/<layout>/v1.json   committed, reviewed
 data/templates/<bank>/<layout>/v2.json      learned at runtime (gitignored) → promoted after review
 ```
 
@@ -111,7 +111,7 @@ Known-template path (classify + detect + extract + validate), median, this machi
 | Synthetic HDFC, 1 page | ~300 ms | ~15 ms |
 | Real SBI, 9 pages | ~3.5 s | ~110 ms |
 
-Reproduce with `uv run python experiments/benchmark.py`. Validation is under 1 ms in every case.
+Reproduce with `cd backend && uv run python scripts/benchmark.py`. Validation is under 1 ms in every case.
 
 ## Security and privacy
 

@@ -1,0 +1,32 @@
+[project]
+name = "bank-parser-ai"
+version = "0.3.0"
+description = "Validated extraction of structured data from text-based bank statement PDFs"
+requires-python = ">=3.11"
+dependencies = [
+    "pdfplumber==0.11.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+# ~15x faster PDF parsing; AGPL-3.0 licensed -- see docs/DECISIONS.md D-007 before enabling.
+fast = ["pymupdf>=1.24"]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bank_parser"]
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]          # lets tests import tests.helpers; the package itself is installed (src layout)

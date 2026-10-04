@@ -2,7 +2,7 @@
 # Privacy gate: blocks real statements, passwords and personal data from commits.
 # Enabled per clone with:  git config core.hooksPath .githooks
 if command -v uv >/dev/null 2>&1; then
-  exec uv run --quiet python scripts/privacy_check.py
+  exec uv run --no-project --quiet python scripts/privacy_check.py
 else
   exec python scripts/privacy_check.py
 fi

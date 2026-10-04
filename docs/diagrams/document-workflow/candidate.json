@@ -1,0 +1,380 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Processing One Statement — Two Workflows",
+    "output": "docs/diagrams/document-workflow/document-workflow.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/kv1729/bank_parser_ai.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "4331ca7689fe461a791bbbcedd9305d3d372dbd2"
+    }
+  },
+  "lanes": [
+    {
+      "id": "known",
+      "label": "Workflow 1 · extraction (never waits)"
+    },
+    {
+      "id": "unknown",
+      "label": "Workflow 1 · unknown layout"
+    },
+    {
+      "id": "learn",
+      "label": "Workflow 2 · template learning (background)"
+    },
+    {
+      "id": "stop",
+      "label": "Stops + review",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "ingest",
+      "label": "Ingest",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "route",
+      "label": "Detect + extract",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "verify",
+      "label": "Verify + store",
+      "fromCol": 4,
+      "toCol": 5
+    }
+  ],
+  "groups": [
+    {
+      "id": "agent_loop",
+      "label": "Bounded agent loop",
+      "lane": "learn",
+      "fromCol": 3,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "upload",
+    "classify",
+    "detect",
+    "tpl",
+    "validate",
+    "persist"
+  ],
+  "nodes": [
+    {
+      "id": "upload",
+      "lane": "known",
+      "col": 0,
+      "type": "external",
+      "label": "Upload PDF",
+      "sublabel": "stream · sha256 ID",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/storage/files.py",
+          "line": 43,
+          "end_line": 70
+        }
+      ]
+    },
+    {
+      "id": "classify",
+      "lane": "known",
+      "col": 1,
+      "type": "backend",
+      "label": "Classify PDF",
+      "sublabel": "text layer · password",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/pipeline.py",
+          "line": 122,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "detect",
+      "lane": "known",
+      "col": 2,
+      "type": "backend",
+      "label": "Detect layout",
+      "sublabel": "template markers",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/pipeline.py",
+          "line": 140,
+          "end_line": 151
+        }
+      ]
+    },
+    {
+      "id": "tpl",
+      "lane": "known",
+      "col": 3,
+      "type": "backend",
+      "label": "Template extract",
+      "sublabel": "deterministic",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/extraction/engine.py",
+          "line": 59,
+          "end_line": 81
+        }
+      ]
+    },
+    {
+      "id": "validate",
+      "lane": "known",
+      "col": 4,
+      "type": "security",
+      "label": "Validate",
+      "sublabel": "balance chain · totals",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/validation.py",
+          "line": 265,
+          "end_line": 277
+        }
+      ]
+    },
+    {
+      "id": "persist",
+      "lane": "known",
+      "col": 5,
+      "type": "database",
+      "label": "Persist result",
+      "sublabel": "SQLite → shown in app",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/pipeline.py",
+          "line": 173,
+          "end_line": 188
+        }
+      ]
+    },
+    {
+      "id": "infer",
+      "lane": "unknown",
+      "col": 2,
+      "type": "backend",
+      "label": "Infer layout",
+      "sublabel": "extract now",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/extraction/unknown.py",
+          "line": 19,
+          "end_line": 50
+        }
+      ]
+    },
+    {
+      "id": "propose",
+      "lane": "learn",
+      "col": 3,
+      "type": "messagebus",
+      "label": "Propose template",
+      "sublabel": "started async · not awaited",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/learning/proposers.py",
+          "line": 58,
+          "end_line": 99
+        }
+      ]
+    },
+    {
+      "id": "test",
+      "lane": "learn",
+      "col": 4,
+      "type": "messagebus",
+      "label": "Test candidate",
+      "sublabel": "validate + regression",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/learning/agent.py",
+          "line": 154,
+          "end_line": 160
+        }
+      ]
+    },
+    {
+      "id": "save",
+      "lane": "learn",
+      "col": 5,
+      "type": "database",
+      "label": "Save new version",
+      "sublabel": "never overwrite",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/templates/registry.py",
+          "line": 86,
+          "end_line": 106
+        }
+      ]
+    },
+    {
+      "id": "needpw",
+      "lane": "stop",
+      "col": 1,
+      "type": "security",
+      "label": "Stopped",
+      "sublabel": "locked · no text layer",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/pipeline.py",
+          "line": 123,
+          "end_line": 138
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "lane": "stop",
+      "col": 4,
+      "type": "security",
+      "label": "Human review",
+      "sublabel": "limits reached",
+      "width": 140,
+      "sources": [
+        {
+          "path": "bank_parser/learning/agent.py",
+          "line": 151,
+          "end_line": 154
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "upload-classify",
+      "from": "upload",
+      "to": "classify",
+      "variant": "emphasis"
+    },
+    {
+      "id": "classify-detect",
+      "from": "classify",
+      "to": "detect",
+      "label": "text PDF",
+      "variant": "emphasis"
+    },
+    {
+      "id": "classify-needpw",
+      "from": "classify",
+      "to": "needpw",
+      "label": "locked / no text",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "detect-tpl",
+      "from": "detect",
+      "to": "tpl",
+      "label": "match",
+      "variant": "emphasis"
+    },
+    {
+      "id": "detect-infer",
+      "from": "detect",
+      "to": "infer",
+      "label": "no match",
+      "role": "branch",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "tpl-validate",
+      "from": "tpl",
+      "to": "validate",
+      "variant": "emphasis"
+    },
+    {
+      "id": "infer-propose",
+      "from": "infer",
+      "to": "propose",
+      "variant": "dashed",
+      "role": "async"
+    },
+    {
+      "id": "infer-validate",
+      "from": "infer",
+      "to": "validate",
+      "role": "branch",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "validate-persist",
+      "from": "validate",
+      "to": "persist",
+      "variant": "emphasis"
+    },
+    {
+      "id": "propose-test",
+      "from": "propose",
+      "to": "test",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "test-save",
+      "from": "test",
+      "to": "save",
+      "label": "accepted",
+      "variant": "dashed"
+    },
+    {
+      "id": "test-review",
+      "from": "test",
+      "to": "review",
+      "label": "rejected",
+      "variant": "security",
+      "role": "error",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Workflow 1",
+      "items": [
+        "Runs immediately for every document",
+        "Known layout: template; unknown: inferred layout",
+        "Result is marked EXTRACTED only if arithmetic verifies",
+        "The app polls the stored status and result"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Workflow 2",
+      "items": [
+        "Separate process pool; extraction never waits",
+        "≤3 candidates, ≤2 refinements, 300 s, no LLM",
+        "Accepted → document re-extracted with the new template"
+      ]
+    }
+  ]
+}

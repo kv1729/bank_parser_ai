@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Bank Statement Parser — System Overview",
+    "output": "docs/diagrams/architecture-overview/bank-parser-architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/kv1729/bank_parser_ai.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "4331ca7689fe461a791bbbcedd9305d3d372dbd2"
+    },
+    "views": [
+      { "id": "known", "label": "Known layout path", "focus": ["user", "api", "pipeline", "detect", "engine", "validation", "sqlite"], "note": "A registered template matches: deterministic extraction, no learning." },
+      { "id": "unknown", "label": "Unknown layout path", "focus": ["pipeline", "detect", "unknown", "agent", "registry", "validation"], "note": "No template matches: extract now, learn a template in the background." }
+    ]
+  },
+  "components": [
+    { "id": "user", "type": "external", "label": "User", "sublabel": "browser", "pos": [40, 300], "size": [150, 64] },
+    { "id": "api", "type": "frontend", "label": "Web app + API", "sublabel": "FastAPI · index.html", "pos": [290, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/app/main.py", "line": 43, "end_line": 55, "label": "upload endpoint" },
+        { "path": "bank_parser/app/static/index.html", "line": 66, "end_line": 68, "label": "UI, textContent only" }
+      ] },
+    { "id": "store", "type": "database", "label": "File store", "sublabel": "data/documents/<sha256>.pdf", "pos": [290, 110], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/storage/files.py", "line": 43, "end_line": 70, "label": "chunked save + sha256" },
+        { "path": "bank_parser/app/main.py", "line": 48, "label": "API calls ingest" }
+      ] },
+    { "id": "pipeline", "type": "backend", "label": "Pipeline", "sublabel": "classify · route · persist", "tag": "deterministic", "pos": [540, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/pipeline.py", "line": 117, "end_line": 171, "label": "Workflow 1" },
+        { "path": "bank_parser/pdf/classify.py", "line": 27, "end_line": 43, "label": "text / scanned" },
+        { "path": "bank_parser/pipeline.py", "line": 94, "end_line": 96, "label": "separate pools" }
+      ] },
+    { "id": "agent", "type": "backend", "label": "Template agent", "sublabel": "Workflow 2 · bounded loop", "tag": "agentic", "pos": [540, 110], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/learning/agent.py", "line": 132, "end_line": 183, "label": "propose→test→save" },
+        { "path": "bank_parser/learning/agent.py", "line": 32, "end_line": 37, "label": "budget limits" },
+        { "path": "bank_parser/learning/proposers.py", "line": 58, "end_line": 112, "label": "heuristic; LLM off" }
+      ] },
+    { "id": "registry", "type": "database", "label": "Template registry", "sublabel": "versioned JSON", "pos": [790, 110], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/templates/registry.py", "line": 86, "end_line": 106, "label": "append-only save" },
+        { "path": "bank_parser/config.py", "line": 45, "end_line": 46, "label": "data/templates" }
+      ] },
+    { "id": "detect", "type": "backend", "label": "Layout detection", "sublabel": "label markers", "tag": "deterministic", "pos": [790, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/detection.py", "line": 13, "end_line": 44, "label": "marker match" },
+        { "path": "bank_parser/pipeline.py", "line": 141, "end_line": 143, "label": "detect call" }
+      ] },
+    { "id": "engine", "type": "backend", "label": "Template extraction", "sublabel": "word_columns engine", "tag": "deterministic", "pos": [1040, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/extraction/engine.py", "line": 59, "end_line": 81, "label": "run a template" },
+        { "path": "bank_parser/extraction/table.py", "line": 72, "end_line": 128, "label": "row assembly" }
+      ] },
+    { "id": "unknown", "type": "backend", "label": "Layout inference", "sublabel": "extract without template", "tag": "deterministic", "pos": [790, 490], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/extraction/unknown.py", "line": 19, "end_line": 50, "label": "Workflow 1, unknown" },
+        { "path": "bank_parser/extraction/inference.py", "line": 122, "end_line": 180, "label": "columns + roles" }
+      ] },
+    { "id": "validation", "type": "backend", "label": "Validation", "sublabel": "balance chain · totals", "tag": "deterministic", "pos": [1290, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/validation.py", "line": 63, "end_line": 152, "label": "balance chain" },
+        { "path": "bank_parser/validation.py", "line": 155, "end_line": 195, "label": "printed totals" },
+        { "path": "bank_parser/validation.py", "line": 265, "end_line": 277, "label": "overall report" }
+      ] },
+    { "id": "sqlite", "type": "database", "label": "SQLite", "sublabel": "data/bank_parser.db", "pos": [1540, 300], "size": [150, 64],
+      "sources": [
+        { "path": "bank_parser/storage/db.py", "line": 14, "end_line": 53, "label": "3 tables" },
+        { "path": "bank_parser/pipeline.py", "line": 173, "end_line": 181, "label": "persist" }
+      ] }
+  ],
+  "connections": [
+    { "id": "user-upload", "from": "user", "to": "api", "label": "upload PDF", "variant": "emphasis" },
+    { "id": "api-store", "from": "api", "to": "store", "label": "stream + hash" },
+    { "id": "api-pipeline", "from": "api", "to": "pipeline", "label": "submit job", "variant": "emphasis" },
+    { "id": "pipeline-agent", "from": "pipeline", "to": "agent", "label": "learn, not awaited", "variant": "dashed" },
+    { "id": "agent-registry", "from": "agent", "to": "registry", "label": "save vN" },
+    { "id": "pipeline-detect", "from": "pipeline", "to": "detect", "label": "text PDF", "variant": "emphasis" },
+    { "id": "detect-registry", "from": "detect", "to": "registry", "label": "read markers" },
+    { "id": "detect-engine", "from": "detect", "to": "engine", "label": "match", "variant": "emphasis" },
+    { "id": "detect-unknown", "from": "detect", "to": "unknown", "label": "no match" },
+    { "id": "engine-validation", "from": "engine", "to": "validation", "label": "statement", "variant": "emphasis" },
+    { "id": "unknown-validation", "from": "unknown", "to": "validation", "label": "statement", "fromSide": "right", "toSide": "bottom" },
+    { "id": "validation-sqlite", "from": "validation", "to": "sqlite", "label": "persist", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "emerald", "title": "Deterministic (no AI)", "items": ["Upload, hashing, classification, detection", "Template extraction and layout inference", "Validation and persistence"] },
+    { "dot": "violet", "title": "Agentic", "items": ["Template agent only: ≤3 candidates, ≤2 refinements, 300 s", "LLM proposer slot exists but is disabled", "On success the document is re-extracted with the new template"] },
+    { "dot": "amber", "title": "Where data lives", "items": ["data/documents — uploaded PDFs (gitignored)", "data/bank_parser.db — results and jobs (gitignored)", "template_registry/ committed · data/templates/ learned"] },
+    { "dot": "cyan", "title": "Reading results", "items": ["The UI polls /api/documents/{id}", "which reads the latest extraction from SQLite"] }
+  ]
+}

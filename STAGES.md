@@ -1,8 +1,8 @@
 # Stages
 
-Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `DECISIONS.md`, not here.
+Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 5 — Documentation & developer workflow. **Next:** Stage 6 — Accuracy corpus.
+**Now:** Stage 6 — Repository restructure (branch `stage-06-restructure`). **Next:** Stage 7 — Accuracy corpus.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -10,15 +10,16 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 2 | Output contract & validation (Phase 0) | Done* | 2026-10-02 | 2026-10-03 |
 | 3 | Real-statement experiment | Done | 2026-10-02 | 2026-10-02 |
 | 4 | Product architecture | Done | 2026-10-03 | 2026-10-03 |
-| 5 | Documentation & developer workflow | In progress | 2026-10-04 | — |
-| 6 | Accuracy corpus & benchmark | Not started | — | — |
-| 7 | Robustness & speed | Not started | — | — |
-| 8 | LLM-assisted template proposer (only if Stage 6/7 shows a need) | Not started | — | — |
-| 9 | OCR for scanned PDFs | Not started | — | — |
-| 10 | Production hardening (auth, deployment, persistent jobs) | Not started | — | — |
-| 11 | MCP / agent interface | Not started | — | — |
+| 5 | Documentation & developer workflow | Done (owner review pending) | 2026-10-04 | 2026-10-04 |
+| 6 | Repository restructure | In progress | 2026-10-04 | — |
+| 7 | Accuracy corpus & benchmark | Not started | — | — |
+| 8 | Robustness & speed | Not started | — | — |
+| 9 | LLM-assisted template proposer (only if Stage 7/8 shows a need) | Not started | — | — |
+| 10 | OCR for scanned PDFs | Not started | — | — |
+| 11 | Production hardening (auth, deployment, persistent jobs) | Not started | — | — |
+| 12 | MCP / agent interface | Not started | — | — |
 
-\* One open item carried forward: sample-data PII decision (DECISIONS.md D-004).
+\* One open item carried forward: sample-data PII decision (docs/DECISIONS.md D-004).
 
 ---
 
@@ -27,7 +28,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Goal:** Understand the prototype and agree a plan.
 - **Deliverables:**
   - `docs/ARCHITECTURE_REVIEW.md`
-  - `Bank_Statement_Parser_PLAN.md`
+  - `docs/PLAN.md` (was `Bank_Statement_Parser_PLAN.md`)
 - **Exit criteria:** The plan was accepted by the owner.
 
 ## 2. Output contract & validation (Phase 0) — Done*
@@ -49,7 +50,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 
 ## 4. Product architecture — Done
 
-- **Goal:** Implement `INSTRUCTIONS.md`, where an unknown layout is extracted immediately while a template is learned in parallel.
+- **Goal:** Implement the product brief (`docs/PRODUCT_BRIEF.md`), where an unknown layout is extracted immediately while a template is learned in parallel.
 - **Deliverables:**
   - PDF backends
   - Versioned template registry
@@ -65,7 +66,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Templates are never overwritten (`tests/test_templates.py`).
   - All three documents are verified or reconcile.
 
-## 5. Documentation & developer workflow — In progress
+## 5. Documentation & developer workflow — Done (owner review pending)
 
 - **Goal:** Anyone can see how the project works, what is used where, and what state it is in.
 - **Deliverables:**
@@ -77,10 +78,27 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Project permission allowlist (`.claude/settings.json`)
   - [x] Working routine in `CLAUDE.md` (session start/end, branch per stage)
   - [ ] Owner review of the guide
-  - [ ] Repository structure decision (proposal pending owner approval)
+  - [x] Repository structure decision (owner chose backend/ + frontend/; carried out in Stage 6)
 - **Exit criteria:** The owner confirms the guide answers "how does it work, what is used where, what is the status".
 
-## 6. Accuracy corpus & benchmark — Not started
+## 6. Repository restructure — In progress
+
+- **Goal:** A production-style layout: `backend/` (src layout) + `frontend/`, docs consolidated, prototype archived, CI.
+- **Deliverables:**
+  - [x] Files moved with `git mv`
+  - [x] Imports and paths updated
+  - [x] `legacy/prototype/README.md`
+  - [x] CI workflow
+  - [x] Docs updated
+  - [x] D-014
+  - [ ] Diagrams re-rendered against the new paths
+  - [ ] Pull request merged
+- **Exit criteria:**
+  - All tests pass, both locally and without PyMuPDF as in CI.
+  - App, benchmark and privacy gate work from the new locations.
+  - The PR is reviewed.
+
+## 7. Accuracy corpus & benchmark — Not started
 
 - **Goal:** Measure accuracy on enough statements to make decisions (PLAN §12).
 - **Deliverables:**
@@ -89,27 +107,27 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Exit criteria:** A benchmark report exists, and every failure is categorised.
 - **Depends on:** the owner supplying or consenting to statements.
 
-## 7. Robustness & speed — Not started
+## 8. Robustness & speed — Not started
 
-- **Goal:** Close the gaps that Stage 6 exposes.
+- **Goal:** Close the gaps that Stage 7 exposes.
 - **Candidates:**
   - Layouts with neither ruled cells nor text headers
   - A single parsing pass for classification and extraction
   - Keeping the PyMuPDF licence decision (D-007) open until then
-- **Exit criteria:** Defined at the start of the stage, from Stage 6 results.
+- **Exit criteria:** Defined at the start of the stage, from Stage 7 results.
 
-## 8. LLM-assisted template proposer — Not started (conditional)
+## 9. LLM-assisted template proposer — Not started (conditional)
 
 - **Goal:** Learn layouts that the heuristic proposer cannot.
-- **Start only if:** Stage 6/7 shows layouts ending in `HUMAN_REVIEW` that heuristics cannot fix.
+- **Start only if:** Stage 7/8 shows layouts ending in `HUMAN_REVIEW` that heuristics cannot fix.
 - **Exit criteria:** It learns those layouts, sends only redacted layout summaries, and stays within the token budget.
 
-## 9. OCR for scanned PDFs — Not started
+## 10. OCR for scanned PDFs — Not started
 
 - **Goal:** Process image-only pages through the same validation.
-- **Start only after:** Stage 6 benchmark results on text PDFs are acceptable (PLAN §2).
+- **Start only after:** Stage 7 benchmark results on text PDFs are acceptable (PLAN §2).
 
-## 10. Production hardening — Not started
+## 11. Production hardening — Not started
 
 - **Goal:** Make the app safe to run beyond localhost.
 - **Deliverables:**
@@ -119,6 +137,6 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Monitoring
   - Safe logging
 
-## 11. MCP / agent interface — Not started
+## 12. MCP / agent interface — Not started
 
 - **Goal:** Expose `parse_statement` to agents, only if an agent will consume it (PLAN §16).

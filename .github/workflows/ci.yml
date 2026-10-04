@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      # Core dependencies only: the optional AGPL PyMuPDF backend is not installed in CI,
+      # so its tests skip. Local-only fixtures and the private real statement are absent and skip too.
+      - run: uv sync --locked
+      - run: uv run pytest -q
+
+  privacy-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Same forbidden-path rules as the local pre-commit hook, applied to every tracked file.
+      - run: |
+          python - <<'EOF'
+          import fnmatch, subprocess, sys
+          sys.path.insert(0, "scripts")
+          import privacy_check as pc
+          files = subprocess.run(["git", "ls-files"], capture_output=True, text=True, check=True).stdout.split()
+          bad = [f for f in files if any(fnmatch.fnmatch(f, p) for p in pc.FORBIDDEN_PATHS)
+                 or (f.lower().endswith(".pdf") and f not in pc.ALLOWED_PDFS)]
+          print("\n".join(bad) or "no forbidden files tracked")
+          sys.exit(1 if bad else 0)
+          EOF

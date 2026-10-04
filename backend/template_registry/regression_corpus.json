@@ -1,0 +1,10 @@
+[
+  {
+    "path": "tests/fixtures/pdfs/sbi_synthetic.pdf",
+    "layout": "sbi/layout-5fbb871c"
+  },
+  {
+    "path": "tests/fixtures/pdfs/hdfc_synthetic.pdf",
+    "layout": "hdfc/layout-f2e8110d"
+  }
+]

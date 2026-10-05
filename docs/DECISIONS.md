@@ -96,7 +96,7 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
   - PyMuPDF opens non-PDF files (text, images) as documents; guarded with `is_pdf`.
 - **Decision:** Extraction code depends on `bank_parser.pdf` types only. Default backend: **pdfplumber**. PyMuPDF is an optional extra (`uv sync --extra fast`, `BANK_PARSER_PDF_BACKEND=pymupdf`). Unknown-layout inference always uses pdfplumber's table finder for column geometry.
 - **Reason:** PyMuPDF's AGPL licence affects a network-served product — an owner decision, not a technical one.
-- **Follow-up:** Owner to decide on PyMuPDF (AGPL compliance or commercial licence) vs staying on pdfplumber.
+- **Follow-up:** Owner to decide on PyMuPDF (AGPL compliance or commercial licence) vs staying on pdfplumber. *(2026-10-05: no longer needed — pypdfium2 gives comparable speed under a permissive licence; see D-015.)*
 
 ## D-008 — Statement schema v2
 
@@ -181,3 +181,64 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
 - **Evidence:** All 139 tests pass after the move; without PyMuPDF, 121 pass and 6 skip, as in CI. The benchmark, the experiments and the privacy gate run from their new locations.
 - **Reason:** The src layout stops imports silently resolving to stray root files and makes the package installable. The monorepo split leaves room for a real JavaScript frontend and per-service deployment.
 - **Paths in D-001 – D-013** refer to the layout at the time they were written.
+
+## D-015 — Default PDF backend: pypdfium2
+
+- **Date:** 2026-10-05
+- **Question:** Can we get PyMuPDF-class speed without PyMuPDF's AGPL licence (D-007)?
+- **Candidates considered:**
+  - **pypdfium2:** Google's PDFium; Apache-2.0 / BSD-3; already installed as a pdfplumber dependency.
+  - **Poppler `pdftotext -bbox`:** GPL; an external binary called as a subprocess.
+  - **pypdf:** BSD; no reliable word positions.
+  - Only pypdfium2 was tested: Poppler adds a GPL binary and process overhead, and pypdf cannot place words.
+- **Experiment:** A new backend (`pdf/pypdfium2_backend.py`). We compared the full extraction output with pdfplumber's on all three statements, on both the known-template and unknown-layout paths, plus the latency benchmark.
+- **Observed evidence:**
+  - **Raw speed.** Word extraction on the real 9-page statement takes **98 ms** (pdfplumber ~1,500 ms; PyMuPDF ~100 ms) and finds 1,717 words (pdfplumber 1,700; PyMuPDF 1,718).
+  - **First run was not identical.** Synthetic SBI gave 3 rows instead of 32, and 3 HDFC rows differed. PDFium writes a hyphen at the end of a line inside a cell as U+FFFE and joins it to the next glyph in reading order, which is often in another column, with no space between them.
+  - **Fix.** The backend restores the `-` and ends the word there. It also starts a new word whenever the next glyph moves backwards or changes baseline. Word boxes use PDFium's *loose* (font-height) character boxes so that a printed line is never split into two.
+  - **After the fix, output is identical to pdfplumber's** on all three documents and both paths: every transaction field, every header field (including the region-rule bank address), the summary, and the validation status. This is locked in by `test_pypdfium2_output_identical_to_pdfplumber` and a hyphen regression test; 156 tests pass.
+  - **Known-template path, measured 2026-10-05 with the machine under load:**
+
+    | Backend | Real 9-page statement | Synthetic SBI | Synthetic HDFC |
+    | --- | --- | --- | --- |
+    | pdfplumber | 8.0 s (about 3.5 s idle, D-007) | 530 ms | 660 ms |
+    | **pypdfium2** | **0.41 s** | **67 ms** | **84 ms** |
+    | PyMuPDF | 0.16 s | 37 ms | 30 ms |
+
+    pypdfium2 is about 18× faster than pdfplumber; PyMuPDF is about 2.5× faster again. Rerun with `cd backend && uv run python scripts/benchmark.py`.
+- **Decision:** **pypdfium2 is the default backend** (`BANK_PARSER_PDF_BACKEND=pypdfium2`), declared as an explicit dependency. pdfplumber stays as an alternative backend and remains the source of ruled-table geometry for unknown-layout inference and template learning; that work happens once per new layout. PyMuPDF stays optional (`--all-extras`) and is not needed.
+- **Why this one:** It is fast, free for commercial use (permissive licence), already in the dependency tree, and verified identical to the previous default. It removes the PyMuPDF licence decision.
+- **Rejected alternatives:**
+  - PyMuPDF as the default: AGPL.
+  - Poppler: GPL binary, subprocess overhead.
+- **Remaining uncertainty / follow-up:**
+  - The equivalence is proven on three documents. Every new statement in the Stage 7 corpus should also be compared across backends.
+  - The per-character Python loop could be vectorised if latency matters later.
+  - Unknown-layout inference still pays for pdfplumber's table finder: about 1.4 s on the 9-page statement, once per new layout.
+
+## D-016 — Free alternatives to paid bank-statement MCP servers
+
+- **Date:** 2026-10-05
+- **Question:** Are there free tools that would solve the problem better than our local pipeline, now that paid services (Bankstatemently, DocuClipper) are ruled out on cost?
+- **Candidates considered (≤3 families):**
+  1. **Docling** (IBM; MIT; runs fully offline; also offered as an MCP server, `docling-mcp`). It uses AI layout and table-structure models (DocLayNet, TableFormer), plus OCR.
+  2. **Dedicated open-source statement parsers.** For example Monopoly (`monopoly-core`), bankstatementprocessor and pdf_statement_reader.
+  3. **Generic local PDF MCP servers** (`mcp-pdf`, pdfplumber-MCP, pdftotext-MCP). These wrap pdfplumber, PyMuPDF, Camelot and Poppler.
+- **Assessment (no experiment run):**
+
+  | Candidate | Free / local | Extra cost to us | Helps with | Verdict |
+  | --- | --- | --- | --- | --- |
+  | Docling (library, or MCP) | Yes / yes, MIT | Heavy install (PyTorch plus model downloads, roughly 1–2 GB); seconds per page on CPU | Layouts with no ruled lines and no text header; **scanned PDFs (OCR)** | **Best free candidate** for the unknown-layout fallback and for Stage 10 OCR. Use it as a Python library, not through MCP |
+  | Monopoly | Yes / yes | AGPL-3.0 | Only its supported banks: US, Singapore, Swiss. **No Indian banks** | Rejected: licence, and no coverage of our banks |
+  | Other statement parsers | Yes / yes | Each is hard-coded for a few foreign banks | Little | Rejected |
+  | Generic PDF MCP servers | Yes / yes | An LLM hop per document if used through MCP | Nothing new: the same libraries we already call directly | Rejected for the pipeline; at most a development convenience |
+
+- **Why no experiment yet:**
+  - Docling's model download and memory needs are significant on this machine (a background server was already stopped once for low memory).
+  - Our current documents all pass with the local pipeline, so a test would not change today's decision.
+  - It should be tested where it can win: on Stage 7 documents that our inference cannot read, and on scans in Stage 10.
+- **Decision:** Keep the local deterministic pipeline. Record Docling as the free candidate to test, as a Python library and not through MCP:
+  - in **Stage 8**, against any Stage 7 layout that ends in human review;
+  - in **Stage 10** for OCR, against Tesseract / OCRmyPDF.
+- **Principle (unchanged since D-011):** MCP servers are for AI assistants. In a production backend, call the underlying library directly; routing every document through MCP adds an LLM, tokens, latency and run-to-run variation.
+

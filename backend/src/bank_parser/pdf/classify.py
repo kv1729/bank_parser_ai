@@ -24,7 +24,7 @@ class Classification:
     needs_ocr_pages: tuple[int, ...]
 
 
-def classify(path, password=None, backend="pdfplumber"):
+def classify(path, password=None, backend="pypdfium2"):
     """Open the PDF (raises PasswordRequired / MalformedPdf) and classify its pages."""
     text_pages, ocr_pages = [], []
     with open_pdf(path, password, backend) as doc:

@@ -28,4 +28,4 @@ def have_pymupdf():
         return False
 
 
-BACKENDS = ["pdfplumber"] + (["pymupdf"] if have_pymupdf() else [])
+BACKENDS = ["pypdfium2", "pdfplumber"] + (["pymupdf"] if have_pymupdf() else [])

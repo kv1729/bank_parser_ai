@@ -1,6 +1,6 @@
 # Bank Statement Parser — Architecture
 
-*As of 2026-10-04. Evidence for every choice is in [`DECISIONS.md`](DECISIONS.md) (D-007 – D-014). Repository layout: see the root `README.md`.*
+*As of 2026-10-05. Evidence for every choice is in [`DECISIONS.md`](DECISIONS.md) (D-007 – D-016). Repository layout: see the root `README.md`.*
 
 A user uploads a text-based bank statement PDF; the system returns validated structured data: account/statement header, every transaction, and a validation report. Unknown layouts are extracted **immediately**; a separate, bounded template-learning workflow turns each new layout into a reusable deterministic template **in parallel**, never blocking extraction.
 
@@ -56,7 +56,7 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 
 | Module | Responsibility |
 | --- | --- |
-| `pdf/` | Backend-neutral words + rectangles; `pdfplumber` (MIT, default) or `pymupdf` (AGPL, ~15× faster, optional); classification |
+| `pdf/` | Backend-neutral words + rectangles; `pypdfium2` (default; Apache/BSD; ~18× faster than pdfplumber, identical output — D-015), `pdfplumber` (MIT; ruled-table geometry for learning) or `pymupdf` (AGPL, optional); classification |
 | `core/schema.py` | `Statement`, `StatementHeader`, `Transaction`, `StatementSummary`, `Provenance`; `Decimal` money; JSON v2 (v1 still loads) |
 | `templates/` | Template model (pure data) and append-only versioned registry |
 | `extraction/detection.py` | Marker matching |
@@ -98,18 +98,18 @@ Acceptance: no extraction problems; at least one transaction; every required che
 
 - No application size limit. `BANK_PARSER_MAX_UPLOAD_BYTES` is an optional infrastructure guard, unset by default.
 - Uploads stream to disk in 1 MiB chunks while hashing; memory is one chunk.
-- Pages are parsed one at a time and their caches released (`pdfplumber` `Page.close()`, verified via Context7). Only header pages are retained.
+- Pages are parsed one at a time and released (`page.close()` in every backend; pdfplumber's behaviour verified via Context7). Only header pages are retained.
 - Work runs in bounded pools (`BANK_PARSER_EXTRACTION_WORKERS`, `BANK_PARSER_LEARNING_WORKERS`); learning runs in a separate process by default.
 
 ## Measured latency
 
-Known-template path (classify + detect + extract + validate), median, this machine:
+Known-template path (classify + detect + extract + validate) on this machine, measured 2026-10-05 while it was under load. pdfplumber took about 3.5 s for the real statement when idle; the ratios are what to compare:
 
-| Document | pdfplumber | PyMuPDF |
-| --- | --- | --- |
-| Synthetic SBI, 2 pages | ~510 ms | ~20 ms |
-| Synthetic HDFC, 1 page | ~300 ms | ~15 ms |
-| Real SBI, 9 pages | ~3.5 s | ~110 ms |
+| Document | **pypdfium2 (default)** | pdfplumber | PyMuPDF (optional) |
+| --- | --- | --- | --- |
+| Synthetic SBI, 2 pages | **67 ms** | 530 ms | 37 ms |
+| Synthetic HDFC, 1 page | **84 ms** | 660 ms | 30 ms |
+| Real SBI, 9 pages | **0.41 s** | 8.0 s | 0.16 s |
 
 Reproduce with `cd backend && uv run python scripts/benchmark.py`. Validation is under 1 ms in every case.
 

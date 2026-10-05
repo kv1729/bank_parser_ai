@@ -24,7 +24,8 @@ It knows a statement layout through a **template**. When a layout is new, it sti
 | Were LLMs used anywhere? | **Not in the running product.** In development, Claude (Opus 5.5, in Claude Code) wrote the code and documents. The archived prototype file `legacy/prototype/llm.py` calls a local Ollama model (`qwen:4b`); the new system does not use it. |
 | Were MCP servers used? | **Not in the product.** In development: **Context7** (MCP plugin) was used twice to check pdfplumber documentation (`Page.close()`, `password=`). The **Claude Docs** connector was used once to publish the first review as a shareable page, before it moved to `docs/history/ARCHITECTURE_REVIEW.md`. Debugger MCP was not available. |
 | Were skills or plugins used? | **In development only:** the **archify** skill drew the diagrams in `docs/diagrams/`, and **Context7** (a plugin) as above. No skill or plugin runs inside the product. |
-| Which libraries does the product use? | pdfplumber (reads PDFs; MIT licence), optional PyMuPDF (15× faster; AGPL, decision pending), FastAPI + uvicorn + python-multipart (web app), Python's `sqlite3` and `decimal`. For tests: pytest and httpx. |
+| Which libraries does the product use? | **pypdfium2** (default PDF reader: Google's PDFium, free Apache/BSD licence, ~18× faster than pdfplumber; D-015), pdfplumber (MIT; used for ruled-table geometry when learning a new layout), optional PyMuPDF (AGPL; not needed), FastAPI + uvicorn + python-multipart (web app), Python's `sqlite3` and `decimal`. For tests: pytest and httpx. |
+| Why not paid bank-statement MCP servers (Bankstatemently, DocuClipper)? | They are paid cloud services (≈$0.03–0.19 per page) that receive your statements, and via MCP they put an LLM in every request. Free alternatives were reviewed in `docs/DECISIONS.md` D-016: **Docling** (IBM, MIT, offline) is the one worth testing, for layouts we cannot read and for scans, used as a library. |
 | Does any data leave the machine? | **No.** All processing is local. Nothing is sent to an LLM or an external service. |
 
 ## 3. How one statement is processed
@@ -96,7 +97,7 @@ To look inside the database (from `backend/`): `uv run python -c "import sqlite3
 
 | Task | Command |
 | --- | --- |
-| Install | `uv sync` (add `--all-extras` for PyMuPDF) |
+| Install | `uv sync` (`--all-extras` adds the optional PyMuPDF backend; not needed) |
 | Run tests | `uv run pytest` |
 | Start the app | `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000 |
 | Time each stage | `uv run python scripts/benchmark.py` |

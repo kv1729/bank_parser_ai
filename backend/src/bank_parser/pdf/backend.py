@@ -1,7 +1,7 @@
 """
 Backend-neutral view of a PDF page: words with coordinates, ruled rectangles
 and line segments. Extraction code depends only on these types, so the PDF
-library can be swapped (DECISIONS.md D-007).
+library can be swapped (DECISIONS.md D-007, D-015). Default: pypdfium2.
 
 Coordinates are PDF points with the origin at the top-left of the page.
 """
@@ -84,7 +84,7 @@ class PdfDocument:
 
 
 def available_backends():
-    names = ["pdfplumber"]
+    names = ["pypdfium2", "pdfplumber"]
     try:
         import pymupdf  # noqa: F401
         names.append("pymupdf")
@@ -94,8 +94,10 @@ def available_backends():
 
 
 @contextmanager
-def open_pdf(path, password=None, backend="pdfplumber"):
-    if backend == "pdfplumber":
+def open_pdf(path, password=None, backend="pypdfium2"):
+    if backend == "pypdfium2":
+        from bank_parser.pdf.pypdfium2_backend import Pypdfium2Document as cls
+    elif backend == "pdfplumber":
         from bank_parser.pdf.pdfplumber_backend import PdfplumberDocument as cls
     elif backend == "pymupdf":
         from bank_parser.pdf.pymupdf_backend import PymupdfDocument as cls

@@ -40,6 +40,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "pdfplumber" },
+    { name = "pypdfium2" },
     { name = "python-multipart" },
     { name = "uvicorn" },
 ]
@@ -60,6 +61,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
     { name = "pdfplumber", specifier = "==0.11.0" },
     { name = "pymupdf", marker = "extra == 'fast'", specifier = ">=1.24" },
+    { name = "pypdfium2", specifier = ">=5.13" },
     { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]

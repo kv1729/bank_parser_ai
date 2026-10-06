@@ -97,7 +97,7 @@ def _accept(template, result, report):
 
 
 class TemplateAgent:
-    def __init__(self, registry, regression_docs=(), budget=LearningBudget(), backend="pdfplumber",
+    def __init__(self, registry, regression_docs=(), budget=LearningBudget(), backend="pypdfium2",
                  proposers=None, detection_texts=None):
         self.registry = registry
         self.regression_docs = list(regression_docs)

@@ -36,7 +36,7 @@ Requires [uv](https://docs.astral.sh/uv/).
 ```
 git config core.hooksPath .githooks          # once per clone: privacy gate
 cd backend
-uv sync                                      # add --all-extras for PyMuPDF (AGPL; see docs/DECISIONS.md D-007)
+uv sync                                      # default PDF engine: pypdfium2 (free, Apache/BSD; D-015)
 uv run pytest
 uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000
 ```
@@ -60,7 +60,7 @@ Environment variables, all optional:
 | `BANK_PARSER_DATA_DIR` | Runtime data folder (default `data/` at the repository root) |
 | `BANK_PARSER_TEMPLATES_DIR` | Reviewed templates (default `backend/template_registry/`) |
 | `BANK_PARSER_FRONTEND_DIR` | Web UI folder (default `frontend/`) |
-| `BANK_PARSER_PDF_BACKEND` | `pdfplumber` or `pymupdf` |
+| `BANK_PARSER_PDF_BACKEND` | `pypdfium2` (default, fast, permissive licence), `pdfplumber`, or `pymupdf` (optional extra, AGPL) |
 | `BANK_PARSER_EXTRACTION_WORKERS`, `BANK_PARSER_LEARNING_WORKERS` | Worker pool sizes |
 | `BANK_PARSER_LEARNING_MAX_SECONDS`, `BANK_PARSER_LEARNING_MAX_CANDIDATES`, `BANK_PARSER_LEARNING_MAX_REFINEMENTS` | Template-agent limits |
 | `BANK_PARSER_MAX_UPLOAD_BYTES` | Optional upload limit (unset = no limit) |

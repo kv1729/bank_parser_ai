@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** between stages — Stage 7 (Accuracy corpus) is next and needs statements from the owner. Open owner items are listed under Stage 7.
+**Now:** Stage 8 speed work (pypdfium2, free-tool review; started early at the owner's request). Stage 7 (Accuracy corpus) still needs statements from the owner. Open owner items are listed under Stage 7.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -13,7 +13,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 5 | Documentation & developer workflow | Done (owner review pending) | 2026-10-04 | 2026-10-04 |
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
 | 7 | Accuracy corpus & benchmark | Not started | — | — |
-| 8 | Robustness & speed | Not started | — | — |
+| 8 | Robustness & speed | In progress (started early, owner request) | 2026-10-05 | — |
 | 9 | LLM-assisted template proposer (only if Stage 7/8 shows a need) | Not started | — | — |
 | 10 | OCR for scanned PDFs | Not started | — | — |
 | 11 | Production hardening (auth, deployment, persistent jobs) | Not started | — | — |
@@ -108,18 +108,21 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Depends on:** the owner supplying or consenting to statements.
 - **Open owner items before or during this stage:**
   - [ ] Review `docs/PROJECT_GUIDE.md` (closes Stage 5).
-  - [ ] PyMuPDF licence: AGPL compliance, commercial licence, or stay on pdfplumber (D-007).
+  - [x] ~~PyMuPDF licence (D-007)~~ — no longer needed: pypdfium2 is the free fast default (D-015).
   - [ ] Commit the real-layout template from `data/templates/`? It holds labels and geometry only.
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
 
-## 8. Robustness & speed — Not started
+## 8. Robustness & speed — In progress (started before Stage 7 at the owner's request)
 
 - **Goal:** Close the gaps that Stage 7 exposes.
-- **Candidates:**
-  - Layouts with neither ruled cells nor text headers
-  - A single parsing pass for classification and extraction
-  - Keeping the PyMuPDF licence decision (D-007) open until then
+- **Done early (owner request, 2026-10-05):**
+  - [x] pypdfium2 default backend: ~18× faster than pdfplumber, free licence, output identical (D-015)
+  - [x] Free alternatives to paid MCP parsers reviewed; Docling is the candidate to test (D-016)
+- **Still to do (scoped by Stage 7 results):**
+  - [ ] Layouts with neither ruled cells nor text headers (test Docling here, D-016)
+  - [ ] A single parsing pass for classification and extraction
+  - [ ] Cross-backend equivalence check on every Stage 7 statement
 - **Exit criteria:** Defined at the start of the stage, from Stage 7 results.
 
 ## 9. LLM-assisted template proposer — Not started (conditional)
@@ -130,7 +133,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 
 ## 10. OCR for scanned PDFs — Not started
 
-- **Goal:** Process image-only pages through the same validation.
+- **Goal:** Process image-only pages through the same validation. Free candidates: Tesseract / OCRmyPDF vs Docling (D-016).
 - **Start only after:** Stage 7 benchmark results on text PDFs are acceptable (PLAN §2).
 
 ## 11. Production hardening — Not started

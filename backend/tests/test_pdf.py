@@ -48,13 +48,37 @@ def test_image_only_pages_flagged_for_ocr(tmp_path, backend):
     assert c.needs_ocr_pages == (3,)
 
 
-@pytest.mark.skipif(len(BACKENDS) < 2, reason="needs both backends")
+@pytest.mark.parametrize("other", [b for b in BACKENDS if b != "pdfplumber"])
 @pytest.mark.parametrize("path", [SBI_PDF, HDFC_PDF])
-def test_backends_agree_on_word_positions(path):
-    """Templates store x-coordinates, so both backends must place words alike."""
-    with open_pdf(path, backend="pdfplumber") as a, open_pdf(path, backend="pymupdf") as b:
+def test_backends_agree_on_word_positions(path, other):
+    """Templates store x-coordinates, so every backend must place words like pdfplumber."""
+    with open_pdf(path, backend="pdfplumber") as a, open_pdf(path, backend=other) as b:
         for n in range(1, a.page_count + 1):
             wa = {(w.text, round(w.x0)) for w in a.page(n).words}
             wb = {(w.text, round(w.x0)) for w in b.page(n).words}
             overlap = len(wa & wb) / max(len(wa), 1)
             assert overlap > 0.95
+
+
+def test_pypdfium2_keeps_line_end_hyphen_and_splits_there():
+    # PDFium marks a hyphen at a cell's line end with U+FFFE and joins the next glyph
+    # (often in another column) without a space. The backend must restore "-" and split.
+    with open_pdf(SBI_PDF, backend="pypdfium2") as doc:
+        words = [w.text for w in doc.page(1).words]
+    assert "CLOSURE-" in words
+    assert not any("￾" in w for w in words)
+    assert not any(w.startswith("CLOSURE-") and len(w) > len("CLOSURE-") for w in words)
+
+
+@pytest.mark.parametrize("path", [SBI_PDF, HDFC_PDF])
+def test_pypdfium2_output_identical_to_pdfplumber(path):
+    """D-015 acceptance: the default backend must produce exactly pdfplumber's statement."""
+    from bank_parser.extraction.unknown import extract_unknown
+    results = []
+    for backend in ("pdfplumber", "pypdfium2"):
+        with open_pdf(path, backend=backend) as doc:
+            result, _ = extract_unknown(doc, path, None)
+        s = result.statement
+        results.append((s.header, s.summary, [(t.txn_date, t.value_date, t.description, t.reference, t.debit,
+                                                t.credit, t.balance, t.page, t.extra) for t in s.transactions]))
+    assert results[0] == results[1]

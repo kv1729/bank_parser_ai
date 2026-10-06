@@ -44,7 +44,7 @@
 
 ## Commands (from `backend/`)
 
-- **Install:** `uv sync` (`--all-extras` adds PyMuPDF)
+- **Install:** `uv sync` (`--all-extras` adds the optional AGPL PyMuPDF backend; not needed)
 - **Tests:** `uv run pytest`
 - **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`
 - **Benchmark:** `uv run python scripts/benchmark.py`
@@ -64,6 +64,7 @@
 - Validators report malformed data as `FAIL`; they never raise and never skip silently.
 - Templates are data, versioned per layout. Never edit or overwrite an existing version: save a new one.
 - Layout detection uses label markers and geometry, not header text alone.
+- Default PDF backend is pypdfium2 (D-015). Any backend change must keep `test_pypdfium2_output_identical_to_pdfplumber`-style equivalence: identical statements, not just passing validation.
 - No application size cap. Protect resources with streaming, page-at-a-time parsing and bounded pools.
 - Exploration is bounded: ≤3 candidates, ≤2 experiments per decision (PLAN §6).
 

@@ -31,7 +31,7 @@ class Settings:
     data_dir: Path
     committed_templates_dir: Path
     frontend_dir: Path = REPO_ROOT / "frontend"
-    pdf_backend: str = "pdfplumber"
+    pdf_backend: str = "pypdfium2"      # DECISIONS.md D-015
     extraction_workers: int = 2
     learning_workers: int = 1
     learning_max_seconds: float = 300.0
@@ -62,7 +62,7 @@ class Settings:
             data_dir=Path(os.environ.get("BANK_PARSER_DATA_DIR", REPO_ROOT / "data")),
             committed_templates_dir=Path(os.environ.get("BANK_PARSER_TEMPLATES_DIR", BACKEND_ROOT / "template_registry")),
             frontend_dir=Path(os.environ.get("BANK_PARSER_FRONTEND_DIR", REPO_ROOT / "frontend")),
-            pdf_backend=os.environ.get("BANK_PARSER_PDF_BACKEND", "pdfplumber"),
+            pdf_backend=os.environ.get("BANK_PARSER_PDF_BACKEND", "pypdfium2"),
             extraction_workers=_int("BANK_PARSER_EXTRACTION_WORKERS", 2),
             learning_workers=_int("BANK_PARSER_LEARNING_WORKERS", 1),
             learning_max_seconds=_float("BANK_PARSER_LEARNING_MAX_SECONDS", 300.0),

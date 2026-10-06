@@ -265,3 +265,39 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
   - The full suite passes (167).
   - Checked manually in a real browser on synthetic data: flags and remarks auto-save and survive a reload, and clicking a row scrolls to its page.
 - **Next:** Reviews feed the Stage 7 accuracy report and become the local-only labelled expected outputs.
+
+## D-018 — Fixes from the owner's first review
+
+- **Date:** 2026-10-06
+- **Source:** the owner reviewed the real statement in `/review`. Arithmetic and amounts were correct. Three problems were found.
+
+### Missing first line of descriptions (real SBI layout)
+
+- **Observed:** the first description line ("WDL TFR", "DEP TFR", …) was missing from every row.
+- **Cause:** In this layout the first line of the description cell sits just *above* the date line and overlaps it: −1.8 pt with pypdfium2, −0.9 pt with pdfplumber. The row builder started a row only at a date, so that line was attached to the end of the *previous* row. The balance chain cannot detect this because amounts were unaffected, which is why validation passed.
+- **Fix (`extraction/table.py`):**
+  - Undated lines are held until the next date line arrives.
+  - A block of packed lines (gaps ≤ 2.0 pt) whose last line touches or overlaps the date line (gap ≤ 0.5 pt), and which is separated from what precedes it, starts the *new* row.
+  - Everything else continues the previous row, as before.
+- **Evidence:**
+  - **Measured gaps** before a date line: the real statement overlaps (−1.8 / −0.9 pt); synthetic SBI 8.3 / 9.2 pt; HDFC 6.8 / 7.7 pt. So the rule cannot fire on the other layouts.
+  - **Real statement after the fix:** 76/81 rows start with WDL/DEP TFR, and 0 rows still end with a stray one. The other 5 are different transaction types (DEBIT…, INTEREST CREDIT, a different deposit type), and their first lines were captured too. Validation still passes, and both backends give identical output.
+  - The synthetic SBI ground truth still matches 32/32, and HDFC is unchanged.
+  - Two synthetic regression tests reproduce both geometries.
+
+### Review screen: pages missing, server crash
+
+- **Observed:** several pages of the 9-page statement did not show. Switching to another PDF kept showing the first one's output.
+- **Cause:** The browser requests several page images at once. They were rendered with pypdfium2 in parallel threads, but **PDFium is not thread-safe**, and the server process died with no traceback (exit code 3). Every later request then failed, including the next document's output. Processing threads use PDFium too, so the same crash could have happened during extraction.
+- **Fix:** One process-wide `PDFIUM_LOCK` (`pdf/pdfium_lock.py`) wraps every pypdfium2 call: opening, page parsing, rendering, closing. The rendered image is copied before the lock is released. Template learning runs in its own process and is unaffected.
+- **Evidence:**
+  - Without the lock, a 12-thread stress run crashes with exit code 3; with it, the run completes.
+  - Regression tests cover concurrent render + parse (`test_pdf.py`) and 32 parallel page requests through the API (`test_review.py`).
+  - In the browser, a 10-page PDF loads 10/10 pages and the server stays up.
+
+### Review screen hardening
+
+- Each selection carries a token. A slow response for a previously selected PDF can never overwrite the current one.
+- Page images retry once, then offer a click-to-retry placeholder.
+- Pending edits are saved before the screen switches documents.
+- **Re-extract** (`POST /api/documents/{id}/reprocess`, a link in the output pane) runs extraction again with the current code. The result is a new extraction; a saved review stays attached to the extraction it was made on.

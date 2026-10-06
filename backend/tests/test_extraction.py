@@ -126,3 +126,48 @@ def test_real_statement_unknown_layout(backend):
     assert result.problems == ()
     assert report.status is Status.PASS and report.verified
     assert {c.check: c.status for c in report.checks}["reconciliation"] is Status.PASS
+
+
+def _synthetic_page(lead_gap):
+    """Two rows. Each row's first description line sits above its date line;
+    `lead_gap` is the gap (pt) from that line to the date line (negative = overlap)."""
+    from bank_parser.pdf.backend import PageLayout, Word
+    words = [Word("Balance", 500, 540, 30, 40)]
+    y = 60.0
+    for i, (lead, rest, cont, amt, bal) in enumerate([("WDL TFR", "UPI/DR/111", "SHOP ONE", "10.00", "90.00"),
+                                                      ("DEP TFR", "NEFT/222", "SALARY CO", "50.00", "140.00")]):
+        lead_top = y
+        date_top = lead_top + 9 + lead_gap            # lead line is 9 pt tall
+        x = 140
+        for w in lead.split():
+            words.append(Word(w, x, x + 25, lead_top, lead_top + 9)); x += 30
+        words += [Word(f"0{i + 1}/01/2024", 25, 70, date_top, date_top + 11),
+                  Word(rest, 140, 230, date_top, date_top + 11),
+                  Word(amt, 405, 430, date_top, date_top + 11) if i == 0 else Word(amt, 445, 480, date_top, date_top + 11),
+                  Word(bal, 515, 560, date_top, date_top + 11)]
+        cont_top = date_top + 11.4
+        words.append(Word(cont, 140, 200, cont_top, cont_top + 9))
+        y = cont_top + 9 + 3.8                        # gap between rows
+    return PageLayout(1, 595, 842, tuple(words))
+
+
+def _spec():
+    from bank_parser.templates.model import Column, TableSpec
+    return TableSpec((Column("txn_date", 20, 75), Column("value_date", 75, 130), Column("description", 130, 400),
+                      Column("debit", 400, 435), Column("credit", 435, 490), Column("balance", 490, 575)),
+                     ("%d/%m/%Y",), ("Balance",), 1)
+
+
+def test_first_description_line_above_the_date_belongs_to_its_own_row():
+    # Regression (D-018): real SBI statements print "WDL TFR"/"DEP TFR" just above the date line,
+    # overlapping it; it used to be attached to the end of the previous row.
+    from bank_parser.extraction.table import assemble_rows
+    rows, _ = assemble_rows([_synthetic_page(lead_gap=-1.8)], _spec())
+    assert [r.text("description") for r in rows] == ["WDL TFR UPI/DR/111 SHOP ONE", "DEP TFR NEFT/222 SALARY CO"]
+
+
+def test_clearly_spaced_line_still_continues_the_previous_row():
+    # A line well above the next date (as in the HDFC and synthetic SBI layouts) is a continuation.
+    from bank_parser.extraction.table import assemble_rows
+    rows, _ = assemble_rows([_synthetic_page(lead_gap=7.0)], _spec())
+    assert rows[0].text("description").endswith("SHOP ONE DEP TFR")

@@ -69,6 +69,37 @@ def _is_header_line(line, spec):
     return bool(tokens) and len(words) >= spec.min_header_tokens and all(w in tokens for w in words)
 
 
+# A row's text can start *above* the line holding its date: in the current SBI
+# layout the first description line ("WDL TFR", "DEP TFR") sits just above the
+# date and overlaps it vertically. Lines like that belong to the row below, not
+# to the end of the row above. They are recognised by geometry only:
+#   - the block's last line touches or overlaps the next date line, and
+#   - the block's lines are packed together but separated from what precedes.
+# Layouts whose continuation lines are clearly spaced from the next date line
+# (synthetic SBI 8-9 pt, HDFC 7-8 pt) never match (DECISIONS.md D-018).
+LEAD_TOUCH_PT = 0.5     # gap from block to the date line: <= this (or negative = overlap)
+PACKED_GAP_PT = 2.0     # gap between lines of one cell: <= this
+
+
+def _split_lead_lines(pending, anchor_bottom, date_line):
+    """Split pending undated lines into (belongs to previous row, leads the next row)."""
+    if not pending or date_line.top - pending[-1][0].bottom > LEAD_TOUCH_PT:
+        return pending, []
+    j = len(pending) - 1
+    while j > 0 and pending[j][0].top - pending[j - 1][0].bottom <= PACKED_GAP_PT:
+        j -= 1
+    before = pending[j - 1][0].bottom if j > 0 else anchor_bottom
+    if before is not None and pending[j][0].top - before <= PACKED_GAP_PT:
+        return pending, []          # packed all the way back to the previous row: cannot tell, keep as before
+    return pending[:j], pending[j:]
+
+
+def _add_cells(row, cells):
+    for col, texts in cells.items():
+        key = col.label if col.role == "ignore" and col.label else col.role
+        row.add(key, " ".join(texts))
+
+
 def assemble_rows(pages, spec):
     """Turn PageLayouts into RawRows. `pages` may be a generator (one page in memory at a time)."""
     columns = tuple(sorted(spec.columns, key=lambda c: c.x0))
@@ -79,15 +110,27 @@ def assemble_rows(pages, spec):
         lines = group_lines(page.words, spec.line_tolerance)
         in_table = not spec.header_on_every_page
         seen_header = False
+        pending = []                # undated lines not yet assigned to a row
+        anchor_bottom = None        # bottom of the last line before `pending`
+
+        def flush_pending():
+            nonlocal pending
+            for _, cells in pending:
+                if current is not None:
+                    _add_cells(current, cells)
+            pending = []
+
         for line in lines:
             if not in_table:
                 if _is_header_line(line, spec):
                     seen_header = True
+                    anchor_bottom = line.bottom
                     continue
                 if not seen_header:
                     continue
                 in_table = True
             elif _is_header_line(line, spec) and current is None:
+                anchor_bottom = line.bottom
                 continue
             cells = _assign(line, columns)
             if cells is None:
@@ -95,24 +138,28 @@ def assemble_rows(pages, spec):
                     continue  # stray text between header and first row
                 break         # footer: table on this page has ended
             date_text = " ".join(cells.get(date_col, ()))
-            if date_text:
-                starting = looks_like_date_start(date_text)
-                if current is not None and not is_complete_date(current.text("txn_date"), spec.date_formats):
-                    pass       # date wrapped onto a second line: keep filling current row
-                elif starting:
-                    if current is not None:
-                        rows.append(current)
-                    current = RawRow(page.number)
-                else:
-                    break      # non-date text in the date column: footer
-            elif current is None:
-                if rows:
-                    current = rows.pop()   # row continues from the previous page
-                else:
+            if not date_text:
+                if current is None and not rows and not pending and anchor_bottom is None:
                     continue
-            for col, texts in cells.items():
-                key = col.label if col.role == "ignore" and col.label else col.role
-                current.add(key, " ".join(texts))
+                pending.append((line, cells))
+                continue
+            if current is not None and not is_complete_date(current.text("txn_date"), spec.date_formats):
+                flush_pending()            # date wrapped onto a second line: keep filling current row
+                _add_cells(current, cells)
+            elif looks_like_date_start(date_text):
+                to_previous, lead = _split_lead_lines(pending, anchor_bottom, line)
+                pending = to_previous
+                flush_pending()
+                if current is not None:
+                    rows.append(current)
+                current = RawRow(page.number)
+                for _, lead_cells in lead:
+                    _add_cells(current, lead_cells)
+                _add_cells(current, cells)
+            else:
+                break      # non-date text in the date column: footer
+            anchor_bottom = line.bottom
+        flush_pending()
         # leave `current` open: its description may continue on the next page
     if current is not None:
         rows.append(current)

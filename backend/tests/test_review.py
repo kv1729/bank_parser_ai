@@ -128,3 +128,27 @@ def test_locked_pages_need_unlock(client):
     assert client.get(f"/api/documents/{doc_id}/pages/1.png").status_code == 423
     assert client.post(f"/api/documents/{doc_id}/unlock", data={"password": "s3"}).status_code == 200
     assert client.get(f"/api/documents/{doc_id}/pages/1.png").status_code == 200
+
+
+def test_reprocess_creates_new_extraction_and_keeps_old_review(client):
+    doc_id = _import(client, SBI_PDF.name)
+    first = _wait(client, doc_id)["extraction"]["id"]
+    client.put(f"/api/documents/{doc_id}/review", json={"extraction_id": first, "flags": ["txn.0"], "remarks": "x"})
+    assert client.post(f"/api/documents/{doc_id}/reprocess").status_code == 200
+    for _ in range(150):
+        ex = client.get(f"/api/documents/{doc_id}").json()["extraction"]
+        if ex["id"] != first:
+            break
+        time.sleep(0.1)
+    assert ex["id"] != first
+    assert client.get(f"/api/documents/{doc_id}/review").json() == {"extraction_id": ex["id"], "review": None}
+
+
+def test_parallel_page_requests_do_not_crash(client):
+    """Regression (D-018): the browser loads several page images at once."""
+    from concurrent.futures import ThreadPoolExecutor
+    doc_id = _import(client, SBI_PDF.name)
+    _wait(client, doc_id)
+    with ThreadPoolExecutor(8) as pool:
+        codes = list(pool.map(lambda i: client.get(f"/api/documents/{doc_id}/pages/{1 + i % 2}.png").status_code, range(32)))
+    assert codes == [200] * 32

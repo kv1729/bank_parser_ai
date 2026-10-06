@@ -82,3 +82,23 @@ def test_pypdfium2_output_identical_to_pdfplumber(path):
         results.append((s.header, s.summary, [(t.txn_date, t.value_date, t.description, t.reference, t.debit,
                                                 t.credit, t.balance, t.page, t.extra) for t in s.transactions]))
     assert results[0] == results[1]
+
+
+def test_pdfium_is_safe_under_concurrent_use():
+    """Regression (D-018): concurrent page renders + parsing crashed the server process.
+    Every PDFium call is serialised by PDFIUM_LOCK; this hammers it from many threads."""
+    from concurrent.futures import ThreadPoolExecutor
+    from bank_parser.pdf.render import render_page_png
+
+    def render(i):
+        return render_page_png(SBI_PDF, 1 + i % 2, scale=0.75)[:8]
+
+    def parse(i):
+        with open_pdf(HDFC_PDF if i % 2 else SBI_PDF, backend="pypdfium2") as doc:
+            return sum(len(doc.page(n).words) for n in range(1, doc.page_count + 1))
+
+    with ThreadPoolExecutor(12) as pool:
+        renders = list(pool.map(render, range(48)))
+        words = list(pool.map(parse, range(48)))
+    assert all(r == b"\x89PNG\r\n\x1a\n" for r in renders)
+    assert len(set(words[0::2])) == 1 and len(set(words[1::2])) == 1   # same result every time

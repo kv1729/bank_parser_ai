@@ -14,6 +14,7 @@ import pypdfium2 as pdfium
 import pypdfium2.raw as pdfium_c
 
 from bank_parser.pdf.backend import MalformedPdf, PageLayout, PasswordRequired, PdfDocument, Rect, Word
+from bank_parser.pdf.pdfium_lock import PDFIUM_LOCK
 
 _PASSWORD_ERROR = 4    # FPDF_ERR_PASSWORD
 
@@ -23,7 +24,8 @@ class Pypdfium2Document(PdfDocument):
 
     def __init__(self, path, password=None):
         try:
-            self._doc = pdfium.PdfDocument(str(path), password=password or None)
+            with PDFIUM_LOCK:
+                self._doc = pdfium.PdfDocument(str(path), password=password or None)
         except pdfium.PdfiumError as e:
             if getattr(e, "err_code", None) == _PASSWORD_ERROR:
                 raise PasswordRequired("PDF is encrypted; a correct password is required") from None
@@ -33,9 +35,14 @@ class Pypdfium2Document(PdfDocument):
 
     @property
     def page_count(self):
-        return len(self._doc)
+        with PDFIUM_LOCK:
+            return len(self._doc)
 
     def page(self, number, with_rects=False):
+        with PDFIUM_LOCK:          # PDFium is not thread-safe (pdfium_lock.py)
+            return self._page(number, with_rects)
+
+    def _page(self, number, with_rects):
         page = self._doc[number - 1]
         try:
             left, bottom, right, top = page.get_bbox()
@@ -96,7 +103,8 @@ class Pypdfium2Document(PdfDocument):
         return tuple(words)
 
     def close(self):
-        self._doc.close()
+        with PDFIUM_LOCK:
+            self._doc.close()
 
 
 def _union(a, b):

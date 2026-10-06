@@ -103,7 +103,9 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Goal:** Measure accuracy on enough statements to make decisions (PLAN §12).
 - **Deliverables:**
   - [x] Review screen (owner request, 2026-10-06; D-017): `/review` lists the PDFs, shows the selected PDF (scrollable) beside the extracted output, with a checkbox per header field, printed total and transaction row to flag wrong outputs, plus remarks. Reviews are stored per extraction in `data/` (gitignored).
-  - [ ] Owner reviews the available statements in `/review` (flags + remarks).
+  - [x] First owner review (2026-10-06), real SBI statement: amounts and arithmetic correct; the first description line was missing and some pages didn't load. Fixed and verified (D-018).
+  - [ ] Owner re-extracts the real statement ("Re-extract with current code") and confirms the descriptions are now complete.
+  - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
   - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.
 - **Exit criteria:** A benchmark report exists, and every failure is categorised.

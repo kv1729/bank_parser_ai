@@ -92,6 +92,7 @@ const SUMMARY_FIELDS = [["total_debits", "Total debits"], ["total_credits", "Tot
 
 let current = null;          // { docId, extractionId, flags:Set, remarks }
 let pollTimer = null, saveTimer = null;
+let showToken = 0;           // only the latest selection may update the screen
 
 async function loadSources(activeDocId) {
   const list = await (await fetch("/api/review/sources")).json();
@@ -113,42 +114,54 @@ async function loadSources(activeDocId) {
 
 async function select(s) {
   clearTimeout(pollTimer);
+  const token = ++showToken;
   let docId = s.document_id;
   if (!s.imported) {
     $("#viewer").replaceChildren(el("div", "Importing and processing…", "empty"));
     const r = await fetch(`/api/review/sources/${encodeURIComponent(s.source_id)}/import`, { method: "POST" });
     if (!r.ok) { $("#viewer").replaceChildren(el("div", "Import failed.", "empty")); return; }
     docId = (await r.json()).document_id;
+    if (token !== showToken) return;
   }
-  await show(docId);
+  await show(docId, token);
 }
 
-async function show(docId) {
+async function show(docId, token = ++showToken) {
   const r = await fetch("/api/documents/" + docId);
-  if (!r.ok) return;
+  if (!r.ok || token !== showToken) return;           // a newer selection replaced this one
   const { document: doc, extraction: ex } = await r.json();
   loadSources(docId);
   if (["RECEIVED", "PROCESSING"].includes(doc.status) || (!ex && doc.status !== "NEEDS_PASSWORD" && doc.status !== "FAILED" && doc.status !== "NEEDS_OCR")) {
     $("#output").replaceChildren(el("div", "Processing…", "empty"));
-    pollTimer = setTimeout(() => show(docId), 1200);
+    clearTimeout(pollTimer);
+    pollTimer = setTimeout(() => { if (token === showToken) show(docId, token); }, 1200);
   }
-  await renderViewer(doc);
-  if (ex) await renderOutput(doc, ex);
+  await renderViewer(doc, token);
+  if (token !== showToken) return;
+  if (ex) await renderOutput(doc, ex, token);
   else if (!["RECEIVED", "PROCESSING"].includes(doc.status)) $("#output").replaceChildren(el("div", doc.error || doc.status, "empty"));
 }
 
-async function renderViewer(doc) {
+async function renderViewer(doc, token) {
   const v = $("#viewer");
   if (v.dataset.doc === doc.id && v.dataset.pages === String(doc.page_count)) return;   // already showing
-  v.replaceChildren();
+  v.replaceChildren(); v.dataset.doc = ""; v.scrollTop = 0;
   if (!doc.page_count) { v.append(el("div", "Pages appear once the PDF has been opened.", "empty")); return; }
   const probe = await fetch(`/api/documents/${doc.id}/pages/1.png?scale=0.5`);
+  if (token !== showToken) return;
   if (probe.status === 423) { v.append(unlockForm(doc)); return; }
   v.dataset.doc = doc.id; v.dataset.pages = String(doc.page_count);
   for (let n = 1; n <= doc.page_count; n++) {
     const wrap = el("div", null, "page"); wrap.id = "page-" + n;
     const img = el("img"); img.loading = "lazy"; img.alt = "Page " + n;
-    img.src = `/api/documents/${doc.id}/pages/${n}.png`;
+    const src = `/api/documents/${doc.id}/pages/${n}.png`;
+    img.src = src;
+    img.onerror = () => {                      // retry once, then offer a manual retry
+      if (!img.dataset.retried) { img.dataset.retried = "1"; setTimeout(() => { img.src = src + "?retry=" + Date.now(); }, 600); return; }
+      const msg = el("div", `Page ${n} could not be shown — click to retry.`, "pno"); msg.style.cursor = "pointer";
+      msg.onclick = () => { msg.remove(); delete img.dataset.retried; img.src = src + "?retry=" + Date.now(); };
+      wrap.insertBefore(msg, img);
+    };
     wrap.append(img, el("div", "Page " + n, "pno"));
     v.append(wrap);
   }
@@ -163,15 +176,17 @@ function unlockForm(doc) {
   f.onsubmit = async e => {
     e.preventDefault();
     const r = await fetch(`/api/documents/${doc.id}/unlock`, { method: "POST", body: new FormData(f) });
-    if (r.ok) { $("#viewer").dataset.doc = ""; renderViewer(doc); }
+    if (r.ok) { $("#viewer").dataset.doc = ""; renderViewer(doc, showToken); }
     else msg.textContent = r.status === 403 ? "Wrong password." : "Could not unlock.";
   };
   return f;
 }
 
-async function renderOutput(doc, ex) {
+async function renderOutput(doc, ex, token) {
   const st = ex.statement || {}; const h = st.header || {}; const sm = st.summary || {};
   const saved = (await (await fetch(`/api/documents/${doc.id}/review`)).json());
+  if (token !== showToken) return;
+  if (current && current.docId !== doc.id && saveTimer) { clearTimeout(saveTimer); await save(); }   // don't lose pending edits
   const review = saved.extraction_id === ex.id ? saved.review : null;
   current = { docId: doc.id, extractionId: ex.id, flags: new Set(review ? review.flags : []), remarks: review ? review.remarks : "" };
 
@@ -183,7 +198,11 @@ async function renderOutput(doc, ex) {
   top.append(el("strong", doc.original_name || doc.id.slice(0, 12)), el("span", "  "), pill(doc.status),
              el("span", "  validation "), pill(ex.report && ex.report.status));
   out.append(top);
-  out.append(el("div", `${ex.workflow} · ${ex.strategy}${ex.template_id ? " · " + ex.template_id : ""} · extraction #${ex.id}`, "muted"));
+  const meta = el("div", `${ex.workflow} · ${ex.strategy}${ex.template_id ? " · " + ex.template_id : ""} · extraction #${ex.id} · `, "muted");
+  const again = el("a", "Re-extract with current code"); again.href = "#"; again.title = "Runs extraction again; saved reviews stay with the extraction they were made on.";
+  again.onclick = async e => { e.preventDefault(); again.textContent = "Re-extracting…"; await reextract(doc.id, ex.id, token); };
+  meta.append(again);
+  out.append(meta);
 
   out.append(el("h2", "Account & statement"));
   const MONEY = new Set(["opening_balance", "closing_balance", "total_debits", "total_credits"]);
@@ -222,6 +241,17 @@ async function renderOutput(doc, ex) {
   bar.append(el("span", "", "muted")); bar.lastChild.id = "flag-count";
   out.append(bar);
   updateCounts(review ? "Saved " + review.updated_at.replace("T", " ").slice(0, 16) : "Not saved yet");
+}
+
+async function reextract(docId, oldExtractionId, token) {
+  await fetch(`/api/documents/${docId}/reprocess`, { method: "POST" });
+  for (let i = 0; i < 90 && token === showToken; i++) {        // wait for the new extraction
+    await new Promise(r => setTimeout(r, 1000));
+    const b = await (await fetch("/api/documents/" + docId)).json();
+    if (b.extraction && b.extraction.id !== oldExtractionId) break;
+    if (["FAILED", "NEEDS_PASSWORD", "NEEDS_OCR"].includes(b.document.status)) break;
+  }
+  if (token === showToken) show(docId);
 }
 
 function fieldTable(rows) {

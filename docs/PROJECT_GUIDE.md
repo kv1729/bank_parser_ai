@@ -55,6 +55,7 @@ Interactive diagrams (open in a browser):
 3. **Middle:** the PDF, page by page; scroll freely.
 4. **Right:** what was extracted. Tick the box next to every header field, printed total or transaction row that is **wrong**. Write your observations in **Remarks**. It saves automatically ("Saved …" at the bottom); the list on the left shows how many items you flagged.
 5. Click a transaction to jump the PDF to its page. Rows with an amber edge are ones the validator itself questioned.
+6. After a fix, use **Re-extract with current code** (next to the extraction number) to get fresh output for the same PDF. Your earlier review stays attached to the earlier extraction.
 
 Your reviews stay in `data/bank_parser.db` (gitignored) and become the hand-checked answers for the Stage 7 accuracy report.
 

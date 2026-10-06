@@ -139,6 +139,21 @@ def create_app(settings=None, learning_mode="process"):
             p.submit(stored.document_id, password)
         return {"document_id": stored.document_id, "duplicate": stored.already_existed}
 
+    @app.post("/api/documents/{document_id}/reprocess")
+    def reprocess(document_id: str):
+        """Extract again with the current code and templates. The result is a new extraction;
+        reviews stay attached to the extraction they were made against."""
+        require_document(document_id)
+        password = vault.get(document_id)
+        if password is None:
+            for s in sources.list():
+                if s["document_id"] == document_id:
+                    password = sources.default_password(sources.resolve(s["source_id"])[0])
+                    vault.put(document_id, password)
+                    break
+        proc().submit(document_id, password)
+        return {"document_id": document_id, "queued": True}
+
     @app.post("/api/documents/{document_id}/unlock")
     def unlock(document_id: str, password: str = Form(...)):
         """Check a password and keep it in memory (never stored) so pages can be rendered."""

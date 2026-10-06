@@ -41,7 +41,7 @@ uv run pytest
 uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000, upload a PDF (with its password if it has one), and watch it process.
+Open http://127.0.0.1:8000, upload a PDF (with its password if it has one), and watch it process. To verify results against the PDF, open http://127.0.0.1:8000/review: pick a PDF, compare it page by page with the extracted output, tick anything wrong and add remarks.
 
 ## What is extracted
 

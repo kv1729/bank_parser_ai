@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 8 speed work (pypdfium2, free-tool review; started early at the owner's request). Stage 7 (Accuracy corpus) still needs statements from the owner. Open owner items are listed under Stage 7.
+**Now:** Stage 7 — Accuracy corpus. The review screen (`/review`) is built; next the owner reviews statements in it. Stage 8 is paused: its remaining items wait on Stage 7 results. Open owner items are listed under Stage 7.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -12,8 +12,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 4 | Product architecture | Done | 2026-10-03 | 2026-10-03 |
 | 5 | Documentation & developer workflow | Done (owner review pending) | 2026-10-04 | 2026-10-04 |
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
-| 7 | Accuracy corpus & benchmark | Not started | — | — |
-| 8 | Robustness & speed | In progress (started early, owner request) | 2026-10-05 | — |
+| 7 | Accuracy corpus & benchmark | In progress | 2026-10-06 | — |
+| 8 | Robustness & speed | Paused (speed work done; rest waits on Stage 7) | 2026-10-05 | — |
 | 9 | LLM-assisted template proposer (only if Stage 7/8 shows a need) | Not started | — | — |
 | 10 | OCR for scanned PDFs | Not started | — | — |
 | 11 | Production hardening (auth, deployment, persistent jobs) | Not started | — | — |
@@ -98,12 +98,14 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - App, benchmark and privacy gate work from the new locations.
   - The PR is reviewed.
 
-## 7. Accuracy corpus & benchmark — Not started
+## 7. Accuracy corpus & benchmark — In progress
 
 - **Goal:** Measure accuracy on enough statements to make decisions (PLAN §12).
 - **Deliverables:**
-  - ≥20 statements across ~5 banks, each with labelled expected output kept local-only
-  - An accuracy report: fully-correct %, row precision/recall, field accuracy
+  - [x] Review screen (owner request, 2026-10-06; D-017): `/review` lists the PDFs, shows the selected PDF (scrollable) beside the extracted output, with a checkbox per header field, printed total and transaction row to flag wrong outputs, plus remarks. Reviews are stored per extraction in `data/` (gitignored).
+  - [ ] Owner reviews the available statements in `/review` (flags + remarks).
+  - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
+  - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.
 - **Exit criteria:** A benchmark report exists, and every failure is categorised.
 - **Depends on:** the owner supplying or consenting to statements.
 - **Open owner items before or during this stage:**
@@ -113,7 +115,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
 
-## 8. Robustness & speed — In progress (started before Stage 7 at the owner's request)
+## 8. Robustness & speed — Paused (speed work done early at the owner's request; the rest waits on Stage 7)
 
 - **Goal:** Close the gaps that Stage 7 exposes.
 - **Done early (owner request, 2026-10-05):**

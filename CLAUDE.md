@@ -46,7 +46,7 @@
 
 - **Install:** `uv sync` (`--all-extras` adds the optional AGPL PyMuPDF backend; not needed)
 - **Tests:** `uv run pytest`
-- **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`
+- **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000` (`/` upload, `/review` owner verification)
 - **Benchmark:** `uv run python scripts/benchmark.py`
 - **Diagrams** (archify skill), from the repository root:
   1. Edit `docs/diagrams/<name>/candidate.json`.

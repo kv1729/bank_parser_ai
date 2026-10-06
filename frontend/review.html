@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Statement Review</title>
+<style>
+  :root { --bg:#f6f6f4; --fg:#1d1d1b; --muted:#6b6b66; --line:#dcdcd6; --card:#fff; --sel:#e8eefc;
+          --ok:#1f7a3a; --warn:#9a6700; --bad:#b42318; --badbg:#fdecea; --accent:#2f5bd3; --issue:#fff6db; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#151514; --fg:#ececea; --muted:#9d9d97; --line:#33332f; --card:#1e1e1c; --sel:#22304f;
+            --ok:#4cc172; --warn:#e0a92e; --bad:#f2725f; --badbg:#3a1d1a; --accent:#7f9cf5; --issue:#3a3218; }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.45 system-ui, sans-serif; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--card); }
+  header h1 { font-size:16px; margin:0; } header a { color:var(--accent); }
+  .muted { color:var(--muted); }
+  main { flex:1; display:grid; grid-template-columns: 230px minmax(0,1fr) minmax(480px, 47%); min-height:0; }
+  aside, #viewer, #output { overflow:auto; min-height:0; }
+  aside { border-right:1px solid var(--line); background:var(--card); padding:8px 0; }
+  aside h2 { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:12px 12px 4px; }
+  .src { display:block; width:100%; text-align:left; border:0; background:none; color:inherit; padding:6px 12px; cursor:pointer; font:inherit; }
+  .src:hover { background:var(--bg); } .src.active { background:var(--sel); }
+  .src .name { display:block; overflow-wrap:anywhere; }
+  #viewer { background:#8a8a85; padding:12px; }
+  @media (prefers-color-scheme: dark) { #viewer { background:#0d0d0c; } }
+  .page { margin:0 auto 12px; max-width:900px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+  .page img { display:block; width:100%; height:auto; }
+  .page .pno { font-size:11px; color:#555; padding:2px 6px; background:#eee; }
+  #viewer .empty, #output .empty { color:#eee; padding:40px; text-align:center; }
+  #output .empty { color:var(--muted); }
+  #output { border-left:1px solid var(--line); background:var(--card); padding:12px 14px 80px; }
+  #output h2 { font-size:13px; margin:18px 0 6px; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align:left; padding:4px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:11px; color:var(--muted); font-weight:600; position:sticky; top:0; background:var(--card); }
+  td.num { text-align:right; white-space:nowrap; } td.cb { width:24px; } td.nowrap { white-space:nowrap; }
+  .tablewrap { overflow-x:auto; } .txns td, .txns th { font-size:12px; padding:3px 5px; } .txns td.desc { min-width:180px; }
+  tr.flagged td { background:var(--badbg); }
+  tr.issue td:not(.cb) { box-shadow: inset 3px 0 0 var(--warn); }
+  tr.txn { cursor:pointer; }
+  .pill { display:inline-block; padding:0 7px; border-radius:999px; font-size:11px; border:1px solid currentColor; }
+  .PASS, .EXTRACTED { color:var(--ok); } .WARN, .NEEDS_REVIEW, .PROCESSING, .RECEIVED, .NEEDS_PASSWORD { color:var(--warn); }
+  .FAIL, .FAILED, .NEEDS_OCR { color:var(--bad); }
+  textarea { width:100%; min-height:110px; font:inherit; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  .bar { position:sticky; bottom:-80px; display:flex; gap:10px; align-items:center; padding:10px 0; background:var(--card); }
+  button.primary { padding:6px 14px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; }
+  form.unlock { display:flex; gap:8px; justify-content:center; padding:30px; }
+  form.unlock input { padding:6px 8px; border-radius:6px; border:1px solid var(--line); }
+  .legend { font-size:11px; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } aside, #viewer, #output { max-height: none; } #viewer { min-height: 60vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Statement review</h1>
+  <span class="muted">Tick every output that is wrong, add remarks, and save. Clicking a transaction scrolls the PDF to its page.</span>
+  <span style="flex:1"></span>
+  <a href="/">Upload page</a>
+</header>
+<main>
+  <aside id="sources"></aside>
+  <section id="viewer"><div class="empty">Select a PDF on the left.</div></section>
+  <section id="output"><div class="empty">The extracted output appears here.</div></section>
+</main>
+<script>
+// Statement data is untrusted text: it is inserted with textContent only, never innerHTML.
+const $ = s => document.querySelector(s);
+function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function pill(v) { return el("span", v || "—", "pill " + (v || "")); }
+// Display money as Indian-grouped text ("120749.89" -> "1,20,749.89") by string manipulation only,
+// so the shown digits are exactly the stored Decimal string (no float conversion).
+function inr(v) {
+  if (v == null || v === "") return "";
+  const m = /^(-?)(\d+)(\.\d+)?$/.exec(String(v)); if (!m) return String(v);
+  let [, sign, int, frac] = m; frac = frac || "";
+  if (int.length > 3) { const last = int.slice(-3); let rest = int.slice(0, -3); const parts = [];
+    while (rest.length > 2) { parts.unshift(rest.slice(-2)); rest = rest.slice(0, -2); }
+    if (rest) parts.unshift(rest); int = parts.join(",") + "," + last; }
+  return sign + int + frac;
+}
+
+const HEADER_FIELDS = [
+  ["bank_name", "Bank"], ["bank_address", "Bank address"], ["account_holder_name", "Account holder"],
+  ["account_holder_address", "Holder address"], ["account_number", "Account number"], ["ifsc", "IFSC"],
+  ["branch", "Branch"], ["currency", "Currency"], ["period_start", "Statement start"], ["period_end", "Statement end"],
+  ["opening_balance", "Opening balance"], ["closing_balance", "Closing balance"]];
+const SUMMARY_FIELDS = [["total_debits", "Total debits"], ["total_credits", "Total credits"],
+  ["debit_count", "Debit count"], ["credit_count", "Credit count"]];
+
+let current = null;          // { docId, extractionId, flags:Set, remarks }
+let pollTimer = null, saveTimer = null;
+
+async function loadSources(activeDocId) {
+  const list = await (await fetch("/api/review/sources")).json();
+  const box = $("#sources"); box.replaceChildren();
+  let group = null;
+  for (const s of list) {
+    if (s.group !== group) { group = s.group; box.append(el("h2", group)); }
+    const b = el("button", null, "src" + (s.document_id === activeDocId ? " active" : ""));
+    b.append(el("span", s.name, "name"));
+    const meta = el("span", null, "muted");
+    meta.append(s.imported ? pill(s.status) : el("span", "not imported"));
+    if (s.page_count) meta.append(el("span", ` · ${s.page_count} p`));
+    if (s.flagged != null) meta.append(el("span", ` · ${s.flagged} flagged`));
+    b.append(meta);
+    b.onclick = () => select(s);
+    box.append(b);
+  }
+}
+
+async function select(s) {
+  clearTimeout(pollTimer);
+  let docId = s.document_id;
+  if (!s.imported) {
+    $("#viewer").replaceChildren(el("div", "Importing and processing…", "empty"));
+    const r = await fetch(`/api/review/sources/${encodeURIComponent(s.source_id)}/import`, { method: "POST" });
+    if (!r.ok) { $("#viewer").replaceChildren(el("div", "Import failed.", "empty")); return; }
+    docId = (await r.json()).document_id;
+  }
+  await show(docId);
+}
+
+async function show(docId) {
+  const r = await fetch("/api/documents/" + docId);
+  if (!r.ok) return;
+  const { document: doc, extraction: ex } = await r.json();
+  loadSources(docId);
+  if (["RECEIVED", "PROCESSING"].includes(doc.status) || (!ex && doc.status !== "NEEDS_PASSWORD" && doc.status !== "FAILED" && doc.status !== "NEEDS_OCR")) {
+    $("#output").replaceChildren(el("div", "Processing…", "empty"));
+    pollTimer = setTimeout(() => show(docId), 1200);
+  }
+  await renderViewer(doc);
+  if (ex) await renderOutput(doc, ex);
+  else if (!["RECEIVED", "PROCESSING"].includes(doc.status)) $("#output").replaceChildren(el("div", doc.error || doc.status, "empty"));
+}
+
+async function renderViewer(doc) {
+  const v = $("#viewer");
+  if (v.dataset.doc === doc.id && v.dataset.pages === String(doc.page_count)) return;   // already showing
+  v.replaceChildren();
+  if (!doc.page_count) { v.append(el("div", "Pages appear once the PDF has been opened.", "empty")); return; }
+  const probe = await fetch(`/api/documents/${doc.id}/pages/1.png?scale=0.5`);
+  if (probe.status === 423) { v.append(unlockForm(doc)); return; }
+  v.dataset.doc = doc.id; v.dataset.pages = String(doc.page_count);
+  for (let n = 1; n <= doc.page_count; n++) {
+    const wrap = el("div", null, "page"); wrap.id = "page-" + n;
+    const img = el("img"); img.loading = "lazy"; img.alt = "Page " + n;
+    img.src = `/api/documents/${doc.id}/pages/${n}.png`;
+    wrap.append(img, el("div", "Page " + n, "pno"));
+    v.append(wrap);
+  }
+}
+
+function unlockForm(doc) {
+  const f = el("form", null, "unlock");
+  const i = el("input"); i.type = "password"; i.name = "password"; i.placeholder = "PDF password"; i.autocomplete = "off";
+  const b = el("button", "Show pages", "primary");
+  const msg = el("span", "", "muted");
+  f.append(i, b, msg);
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const r = await fetch(`/api/documents/${doc.id}/unlock`, { method: "POST", body: new FormData(f) });
+    if (r.ok) { $("#viewer").dataset.doc = ""; renderViewer(doc); }
+    else msg.textContent = r.status === 403 ? "Wrong password." : "Could not unlock.";
+  };
+  return f;
+}
+
+async function renderOutput(doc, ex) {
+  const st = ex.statement || {}; const h = st.header || {}; const sm = st.summary || {};
+  const saved = (await (await fetch(`/api/documents/${doc.id}/review`)).json());
+  const review = saved.extraction_id === ex.id ? saved.review : null;
+  current = { docId: doc.id, extractionId: ex.id, flags: new Set(review ? review.flags : []), remarks: review ? review.remarks : "" };
+
+  const issueRows = new Set();
+  for (const c of (ex.report && ex.report.checks) || []) for (const i of c.issues) if (i.row_index != null) issueRows.add(i.row_index);
+
+  const out = $("#output"); out.replaceChildren();
+  const top = el("div");
+  top.append(el("strong", doc.original_name || doc.id.slice(0, 12)), el("span", "  "), pill(doc.status),
+             el("span", "  validation "), pill(ex.report && ex.report.status));
+  out.append(top);
+  out.append(el("div", `${ex.workflow} · ${ex.strategy}${ex.template_id ? " · " + ex.template_id : ""} · extraction #${ex.id}`, "muted"));
+
+  out.append(el("h2", "Account & statement"));
+  const MONEY = new Set(["opening_balance", "closing_balance", "total_debits", "total_credits"]);
+  out.append(fieldTable(HEADER_FIELDS.map(([k, label]) => ["header." + k, label, MONEY.has(k) ? inr(h[k]) : h[k]])));
+  if (st.summary) {
+    out.append(el("h2", "Totals printed by the bank"));
+    out.append(fieldTable(SUMMARY_FIELDS.map(([k, label]) => ["summary." + k, label, MONEY.has(k) ? inr(sm[k]) : sm[k]])));
+  }
+
+  const txns = st.transactions || [];
+  out.append(el("h2", `Transactions (${txns.length})`));
+  out.append(el("div", "Amber edge = row named by a validation issue. Tick a row if any of its values is wrong.", "muted legend"));
+  const t = el("table", null, "txns");
+  const hr = el("tr"); for (const c of ["✗", "#", "Date", "Description", "Ref", "Debit", "Credit", "Balance", "Pg"]) hr.append(el("th", c));
+  const thead = el("thead"); thead.append(hr); t.append(thead);
+  const tb = el("tbody");
+  for (const x of txns) {
+    const key = "txn." + x.row_index;
+    const tr = el("tr", null, "txn" + (issueRows.has(x.row_index) ? " issue" : ""));
+    tr.append(checkboxCell(key, tr));
+    tr.append(el("td", x.row_index + 1), el("td", x.txn_date, "nowrap"), el("td", x.description, "desc"), el("td", x.reference ?? ""),
+              el("td", inr(x.debit), "num"), el("td", inr(x.credit), "num"), el("td", inr(x.balance), "num"), el("td", x.page ?? ""));
+    tr.onclick = e => { if (e.target.type !== "checkbox" && x.page) document.getElementById("page-" + x.page)?.scrollIntoView({ behavior: "smooth" }); };
+    tb.append(tr);
+  }
+  t.append(tb); const wrapT = el("div", null, "tablewrap"); wrapT.append(t); out.append(wrapT);
+
+  out.append(el("h2", "Remarks"));
+  const ta = el("textarea"); ta.placeholder = "Your observations: what is wrong, patterns you notice, anything to fix."; ta.value = current.remarks;
+  ta.oninput = () => { current.remarks = ta.value; scheduleSave(); };
+  out.append(ta);
+
+  const bar = el("div", null, "bar");
+  const btn = el("button", "Save review", "primary"); btn.onclick = () => save();
+  bar.append(btn, el("span", "", "muted")); bar.lastChild.id = "save-state";
+  bar.append(el("span", "", "muted")); bar.lastChild.id = "flag-count";
+  out.append(bar);
+  updateCounts(review ? "Saved " + review.updated_at.replace("T", " ").slice(0, 16) : "Not saved yet");
+}
+
+function fieldTable(rows) {
+  const t = el("table");
+  for (const [key, label, value] of rows) {
+    const tr = el("tr");
+    tr.append(checkboxCell(key, tr), el("td", label, "muted"), el("td", value ?? "—"));
+    t.append(tr);
+  }
+  return t;
+}
+
+function checkboxCell(key, tr) {
+  const td = el("td", null, "cb");
+  const cb = el("input"); cb.type = "checkbox"; cb.checked = current.flags.has(key); cb.title = "Mark as incorrect";
+  tr.classList.toggle("flagged", cb.checked);
+  cb.onchange = () => {
+    if (cb.checked) current.flags.add(key); else current.flags.delete(key);
+    tr.classList.toggle("flagged", cb.checked);
+    scheduleSave();
+  };
+  td.append(cb);
+  return td;
+}
+
+function updateCounts(state) {
+  if (state) $("#save-state").textContent = state;
+  $("#flag-count").textContent = `· ${current.flags.size} flagged`;
+}
+
+function scheduleSave() { updateCounts("Unsaved changes…"); clearTimeout(saveTimer); saveTimer = setTimeout(save, 900); }
+
+async function save() {
+  clearTimeout(saveTimer);
+  const r = await fetch(`/api/documents/${current.docId}/review`, {
+    method: "PUT", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ extraction_id: current.extractionId, flags: [...current.flags], remarks: current.remarks }) });
+  if (r.ok) { const rv = await r.json(); updateCounts("Saved " + rv.updated_at.replace("T", " ").slice(0, 16)); loadSources(current.docId); }
+  else updateCounts("Save failed: " + ((await r.json()).detail || r.status));
+}
+
+loadSources();
+</script>
+</body>
+</html>

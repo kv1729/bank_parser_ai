@@ -50,6 +50,16 @@ CREATE TABLE IF NOT EXISTS template_jobs (
     updated_at    TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS template_jobs_document ON template_jobs(document_id);
+CREATE TABLE IF NOT EXISTS reviews (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id   TEXT NOT NULL REFERENCES documents(id),
+    extraction_id INTEGER NOT NULL REFERENCES extractions(id),
+    flags_json    TEXT NOT NULL,              -- keys of outputs the reviewer marked incorrect
+    remarks       TEXT NOT NULL DEFAULT '',
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    UNIQUE (document_id, extraction_id)
+);
 """
 
 
@@ -156,3 +166,44 @@ class Database:
         out = dict(row)
         out["attempts"] = json.loads(out.pop("attempts_json")) if out.get("attempts_json") else []
         return out
+
+    # --- human review -------------------------------------------------------------
+    def save_review(self, doc_id, extraction_id, flags, remarks):
+        """One review per (document, extraction); saving again updates it in place."""
+        now = utcnow()
+        with self.connect() as c:
+            c.execute("""INSERT INTO reviews(document_id, extraction_id, flags_json, remarks, created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(document_id, extraction_id) DO UPDATE SET
+                           flags_json = excluded.flags_json, remarks = excluded.remarks,
+                           updated_at = excluded.updated_at""",
+                      (doc_id, extraction_id, json.dumps(sorted(set(flags))), remarks, now, now))
+        return self.get_review(doc_id, extraction_id)
+
+    def get_review(self, doc_id, extraction_id):
+        with self.connect() as c:
+            row = c.execute("SELECT * FROM reviews WHERE document_id = ? AND extraction_id = ?",
+                            (doc_id, extraction_id)).fetchone()
+        if not row:
+            return None
+        out = dict(row)
+        out["flags"] = json.loads(out.pop("flags_json"))
+        return out
+
+    def get_extraction(self, extraction_id):
+        with self.connect() as c:
+            row = c.execute("SELECT * FROM extractions WHERE id = ?", (extraction_id,)).fetchone()
+        if not row:
+            return None
+        out = dict(row)
+        for k in ("report_json", "statement_json", "problems_json", "timings_json"):
+            out[k[:-5]] = json.loads(out.pop(k)) if out[k] else None
+        return out
+
+    def review_counts(self):
+        """{document_id: number of flagged outputs} for each document's latest review."""
+        with self.connect() as c:
+            rows = c.execute("""SELECT document_id, flags_json, updated_at FROM reviews
+                                ORDER BY updated_at""").fetchall()
+        return {r["document_id"]: len(json.loads(r["flags_json"])) for r in rows}
+

@@ -68,7 +68,8 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 | `learning/` | Template agent, proposers, privacy-safe markers |
 | `storage/` | Content-addressed file store, SQLite |
 | `pipeline.py` | Orchestration; separate extraction and learning pools |
-| `api/` | FastAPI routes; the single-page UI lives in top-level `frontend/` |
+| `api/` | FastAPI routes; the UI pages live in top-level `frontend/` (`index.html` upload, `review.html` verification) |
+| `review.py`, `pdf/render.py` | Review screen backend: reviewable sources, import, in-memory password vault, flag validation; server-side page rendering with pypdfium2 (D-017) |
 
 ## Templates
 

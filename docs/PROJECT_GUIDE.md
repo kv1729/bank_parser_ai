@@ -46,6 +46,17 @@ Interactive diagrams (open in a browser):
 | 6. Store | The result, validation report and timings are saved to SQLite. Status is `EXTRACTED` only if the arithmetic verified. | `pipeline.py`, `storage/db.py` |
 | 7. Show | The web page polls for status and shows the header, checks and transactions. | `frontend/index.html` |
 | 8. After learning | If the agent saved a template, the document is re-extracted with it, and future statements of that layout take step 4a. | `pipeline.py` (`_learning_done`) |
+| 9. Review (you) | At http://127.0.0.1:8000/review you pick a PDF and see it page by page next to the extracted output. Tick every output that is wrong, write remarks; it auto-saves. | `frontend/review.html`, `review.py`, `pdf/render.py` |
+
+## 3a. Verifying an extraction yourself (review screen)
+
+1. Start the app (section 7) and open http://127.0.0.1:8000/review.
+2. **Left:** the PDFs you can review — your private statements in `sample_data/`, the synthetic samples, and anything uploaded. A file not yet imported is imported and processed when you click it. A password-protected file uses `sample_data/.pdf_password` if present; otherwise the page asks for the password (kept in memory only).
+3. **Middle:** the PDF, page by page; scroll freely.
+4. **Right:** what was extracted. Tick the box next to every header field, printed total or transaction row that is **wrong**. Write your observations in **Remarks**. It saves automatically ("Saved …" at the bottom); the list on the left shows how many items you flagged.
+5. Click a transaction to jump the PDF to its page. Rows with an amber edge are ones the validator itself questioned.
+
+Your reviews stay in `data/bank_parser.db` (gitignored) and become the hand-checked answers for the Stage 7 accuracy report.
 
 ## 4. Deterministic vs agentic
 
@@ -83,7 +94,7 @@ Interactive diagrams (open in a browser):
 | What | Where | In git? |
 | --- | --- | --- |
 | Uploaded PDFs | `data/documents/<sha256>.pdf` | No |
-| Results, validation reports, jobs | `data/bank_parser.db` (SQLite: `documents`, `extractions`, `template_jobs`) | No |
+| Results, validation reports, jobs, your reviews | `data/bank_parser.db` (SQLite: `documents`, `extractions`, `template_jobs`, `reviews`) | No |
 | Templates learned at runtime | `data/templates/<bank>/<layout>/vN.json` | No (promote after review) |
 | Reviewed templates | `backend/template_registry/<bank>/<layout>/vN.json` | Yes |
 | Your private statements and password | `sample_data/` (whole folder) | No |
@@ -99,7 +110,7 @@ To look inside the database (from `backend/`): `uv run python -c "import sqlite3
 | --- | --- |
 | Install | `uv sync` (`--all-extras` adds the optional PyMuPDF backend; not needed) |
 | Run tests | `uv run pytest` |
-| Start the app | `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000 |
+| Start the app | `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000 (upload) or http://127.0.0.1:8000/review (verify) |
 | Time each stage | `uv run python scripts/benchmark.py` |
 | Refresh the privacy list | `uv run python scripts/refresh_sensitive_strings.py` |
 | See templates | `backend/template_registry/` and `data/templates/`, or http://127.0.0.1:8000/api/templates |

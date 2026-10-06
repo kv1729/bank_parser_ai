@@ -242,3 +242,26 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
   - in **Stage 10** for OCR, against Tesseract / OCRmyPDF.
 - **Principle (unchanged since D-011):** MCP servers are for AI assistants. In a production backend, call the underlying library directly; routing every document through MCP adds an LLM, tokens, latency and run-to-run variation.
 
+
+## D-017 — Review screen for owner verification
+
+- **Date:** 2026-10-06
+- **Question:** How can the owner verify extractions against the source PDF and record which outputs are wrong?
+- **Decision:** A `/review` page (`frontend/review.html`) with three panes:
+  1. **PDFs available for review:** the local private folder (`sample_data/`), the synthetic samples, and anything uploaded. Selecting a file that is not yet imported imports it and processes it.
+  2. **The PDF itself,** rendered page by page on the server with pypdfium2 (`pdf/render.py`) and scrolled in the browser.
+  3. **The extracted output:** a checkbox on every header field, printed total and transaction row, plus a free-text remarks box. Changes auto-save. Clicking a transaction scrolls the PDF to its page, and rows named by a validation issue are marked.
+- **Details:**
+  - **Server-side rendering, not the browser's PDF viewer.** It works the same everywhere, handles encrypted PDFs without the browser asking for a password, and allows extracted rows to be highlighted on the page later.
+  - **Passwords** live in an in-memory vault with a 4-hour limit (`review.PasswordVault`) and are never stored. Imports from a folder use that folder's local `.pdf_password` file; otherwise the page asks for the password (`POST /unlock`).
+  - **Reviews** are stored in SQLite (`reviews`), one per (document, extraction): flagged keys (`header.<field>`, `summary.<field>`, `txn.<row_index>`) plus remarks. Reprocessing creates a new extraction, so an old review never silently applies to new output. Keys are validated against the extraction they belong to.
+  - **Granularity:** one checkbox per header field and per transaction *row*, not per cell. That's enough to locate an error; the remarks carry the detail.
+  - **Safety:**
+    - Source files resolve only by listed name, never by path (path traversal is rejected and tested).
+    - Statement text is inserted with `textContent` only.
+    - Amounts are shown with Indian digit grouping by string manipulation, never via floats.
+- **Evidence:**
+  - 11 API tests (`tests/test_review.py`): sources, idempotent import, PNG rendering, review round trip, key validation, traversal, password flows.
+  - The full suite passes (167).
+  - Checked manually in a real browser on synthetic data: flags and remarks auto-save and survive a reload, and clicking a row scrolls to its page.
+- **Next:** Reviews feed the Stage 7 accuracy report and become the local-only labelled expected outputs.

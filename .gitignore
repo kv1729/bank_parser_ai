@@ -21,3 +21,7 @@ docs/diagrams/**/*.finalize-summary.json
 docs/diagrams/**/*.delivery.json
 docs/diagrams/**/*.browser-check.json
 docs/diagrams/**/review-*/
+
+# Old pre-restructure environments, renamed 2026-10-07; safe to delete
+.venv.old/
+venv.old/

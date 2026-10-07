@@ -110,7 +110,7 @@ From `backend\`:
 
 | What you see | Cause | Fix |
 | --- | --- | --- |
-| `ModuleNotFoundError: No module named 'bank_parser'`, a traceback, or "aborted" right after starting | Started from the project root, so `uv` used the **old `.venv` at the root** (left over from before the restructure) | Use `start-app.cmd`, or `cd backend` first (section 3B). Optionally delete the old root `.venv\` and `venv\` folders — they are unused |
+| `ModuleNotFoundError: No module named 'bank_parser'`, a traceback, or "aborted" right after starting | Started from the project root, so `uv` used the **old `.venv` at the root** (left over from before the restructure) | Use `start-app.cmd`, or `cd backend` first (section 3B). The old root environments were renamed to `.venv.old\` and `venv.old\` (2026-10-07) and are unused — delete them whenever you like |
 | `warning: VIRTUAL_ENV=… does not match the project environment path` | An old environment is activated in your terminal | Harmless. The launcher clears it; or open a fresh terminal |
 | `Port 8000 is already in use` | The app (or something else) is already running | Open http://127.0.0.1:8000/review — it may already be up. Or start on another port: `start-app.cmd -Port 8001` |
 | `running scripts is disabled on this system` | PowerShell blocks `.ps1` files | Use `start-app.cmd` (it bypasses this for this one script) |

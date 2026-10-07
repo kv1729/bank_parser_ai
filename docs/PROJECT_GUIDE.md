@@ -111,7 +111,7 @@ To look inside the database (from `backend/`): `uv run python -c "import sqlite3
 | --- | --- |
 | Install | `uv sync` (`--all-extras` adds the optional PyMuPDF backend; not needed) |
 | Run tests | `uv run pytest` |
-| Start the app | `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000`, then open http://127.0.0.1:8000 (upload) or http://127.0.0.1:8000/review (verify) |
+| Start the app | Double-click `start-app.cmd` (repository root), then open http://127.0.0.1:8000 (upload) or http://127.0.0.1:8000/review (verify). Full steps and troubleshooting: `docs/RUNBOOK.md` |
 | Time each stage | `uv run python scripts/benchmark.py` |
 | Refresh the privacy list | `uv run python scripts/refresh_sensitive_strings.py` |
 | See templates | `backend/template_registry/` and `data/templates/`, or http://127.0.0.1:8000/api/templates |

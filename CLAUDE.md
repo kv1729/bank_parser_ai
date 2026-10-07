@@ -5,6 +5,7 @@
 | Document | Purpose |
 | --- | --- |
 | `docs/PROJECT_GUIDE.md` | Plain-language overview. Update its tool/agent tables when a component or tool is added. |
+| `docs/RUNBOOK.md` | How to set up, start, use and stop the app; troubleshooting. Update when commands or startup change. |
 | `docs/PLAN.md` | Plan |
 | `docs/ARCHITECTURE.md` + `docs/diagrams/` | Architecture |
 | `docs/DECISIONS.md` | Decisions with evidence. Record meaningful decisions here (template in PLAN §22). |
@@ -46,7 +47,7 @@
 
 - **Install:** `uv sync` (`--all-extras` adds the optional AGPL PyMuPDF backend; not needed)
 - **Tests:** `uv run pytest`
-- **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000` (`/` upload, `/review` owner verification)
+- **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000` (`/` upload, `/review` owner verification). The owner starts it with `start-app.cmd` at the repository root (see `docs/RUNBOOK.md`); never from the root with plain `uv run` — the old root `.venv` breaks it.
 - **Benchmark:** `uv run python scripts/benchmark.py`
 - **Diagrams** (archify skill), from the repository root:
   1. Edit `docs/diagrams/<name>/candidate.json`.

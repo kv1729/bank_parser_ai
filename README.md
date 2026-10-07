@@ -31,6 +31,8 @@ sample_data/             local private statements, gitignored
 
 ## Quick start
 
+**Step-by-step instructions, checks and troubleshooting: [`docs/RUNBOOK.md`](docs/RUNBOOK.md).** On Windows, the simplest way to start the app is to double-click `start-app.cmd`.
+
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```

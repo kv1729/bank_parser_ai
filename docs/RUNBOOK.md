@@ -93,6 +93,40 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 4. Click a transaction to jump to its page. Amber-edged rows are ones the validator questioned.
 5. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction.
 
+## 4a. See the extracted output without the UI
+
+**Where it is stored:** everything is in one SQLite database file, `E:\Ted\Projects\bank_parser_ai\data\bank_parser.db`. Inside it:
+
+| Table | Holds |
+| --- | --- |
+| `documents` | One row per PDF: id (SHA-256 of the file), file name, status, page count |
+| `extractions` | One row per extraction run. `statement_json` holds the full output as **JSON** (header, printed totals, every transaction); `report_json` the validation report |
+| `reviews` | Your ticks and remarks, tied to one extraction |
+
+Each **Re-extract** adds a new extraction; older ones are kept. Extraction numbers are shared by all documents, so the latest for one statement may be #8 even if it has only 6 extractions. The output is JSON *inside* the database, so a spreadsheet needs an export first:
+
+**Spreadsheet (CSV, opens in Excel)** — from `backend\`:
+
+```powershell
+uv run python scripts/export_extraction.py --list            # documents, their ids and extraction numbers
+uv run python scripts/export_extraction.py --doc a9941c06    # latest extraction of that document
+uv run python scripts/export_extraction.py --doc a9941c06 --extraction 5   # an older one
+uv run python scripts/export_extraction.py --doc a9941c06 --json           # also the raw JSON
+```
+
+It prints the paths of what it wrote, in `data\exports\`:
+- `<doc>_extraction_<n>_transactions.csv` — one row per transaction (date, description, reference, debit, credit, amount, direction, balance, page);
+- `<doc>_extraction_<n>_header.csv` — account and statement fields, printed totals, validation result;
+- `<doc>_extraction_<n>.json` — with `--json`, the exact stored JSON.
+
+Double-click the CSV to open it in Excel. The database is opened read-only, so this is safe while the app is running.
+
+**Raw JSON in the browser** (app running): http://127.0.0.1:8000/api/documents lists documents with their `id`; http://127.0.0.1:8000/api/documents/&lt;id&gt; shows the latest extraction.
+
+**Browse the database itself:** the free *DB Browser for SQLite* → *Open Database Read Only* → `data\bank_parser.db` → *Browse Data* → `extractions`.
+
+`data\` (database and exports) is gitignored and contains your statement data — keep it on your machine.
+
 ## 5. Stop the app
 
 Press **Ctrl+C** in the server window (or close the window). Check: http://127.0.0.1:8000 no longer loads.

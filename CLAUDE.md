@@ -49,6 +49,7 @@
 - **Tests:** `uv run pytest`
 - **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000` (`/` upload, `/review` owner verification). The owner starts it with `start-app.cmd` at the repository root (see `docs/RUNBOOK.md`); never from the root with plain `uv run` — the old root `.venv` breaks it.
 - **Benchmark:** `uv run python scripts/benchmark.py`
+- **Export output to CSV:** `uv run python scripts/export_extraction.py --list` / `--doc <id-prefix>` (read-only; writes `data/exports/`)
 - **Diagrams** (archify skill), from the repository root:
   1. Edit `docs/diagrams/<name>/candidate.json`.
   2. Set `meta.repository.revision` to the committed HEAD.

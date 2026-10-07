@@ -113,6 +113,7 @@ To look inside the database (from `backend/`): `uv run python -c "import sqlite3
 | Run tests | `uv run pytest` |
 | Start the app | Double-click `start-app.cmd` (repository root), then open http://127.0.0.1:8000 (upload) or http://127.0.0.1:8000/review (verify). Full steps and troubleshooting: `docs/RUNBOOK.md` |
 | Time each stage | `uv run python scripts/benchmark.py` |
+| Export results to a spreadsheet | `uv run python scripts/export_extraction.py --doc <id-prefix>` → CSVs in `data/exports/` (see `docs/RUNBOOK.md` §4a) |
 | Refresh the privacy list | `uv run python scripts/refresh_sensitive_strings.py` |
 | See templates | `backend/template_registry/` and `data/templates/`, or http://127.0.0.1:8000/api/templates |
 

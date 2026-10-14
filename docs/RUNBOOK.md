@@ -27,7 +27,7 @@ Do these once. Each has a check so you know it worked.
 | 2 | Get the code | `git clone https://github.com/kv1729/bank_parser_ai.git` (or use your existing folder) | Folder has `backend/`, `frontend/`, `start-app.cmd` |
 | 3 | Turn on the privacy gate | `cd E:\Ted\Projects\bank_parser_ai` then `git config core.hooksPath .githooks` | `git config --get core.hooksPath` prints `.githooks` |
 | 4 | Install the app's libraries | `cd backend` then `uv sync` | Ends without errors; `backend\.venv` exists |
-| 5 | Put private statements in place | Copy PDFs into `sample_data\`; if they share a password, put it alone in `sample_data\.pdf_password` | Both are gitignored: `git status` does not list them |
+| 5 | Put private statements in place | Copy PDFs into `sample_data\` (not `data\documents\` — that is the app's internal store). Put their passwords in `sample_data\.pdf_password`, **one password per line**; each PDF is opened with whichever line works | Both are gitignored: `git status` does not list them |
 | 6 | Build the privacy list from your statements | from `backend\`: `uv run python scripts/refresh_sensitive_strings.py` | Prints `scanned N local statement(s)` |
 
 Repeat step 6 whenever you add a new private statement.
@@ -152,7 +152,8 @@ From `backend\`:
 | `uv sync` fails | No internet, or a broken download | Check your connection, run `uv sync` again from `backend\` |
 | Review page shows old results or old behaviour | The server is still running old code | Stop it (section 5), `git pull` (section 2), start again (section 3), then **Re-extract** the PDF |
 | Some PDF pages show "could not be shown" | A page failed to render | Click the message to retry. If many fail, check the server window for errors |
-| Status `NEEDS_PASSWORD` | Encrypted PDF without the right password | On `/review`, type the password; or put it in `sample_data\.pdf_password` and select the file again |
+| Status `NEEDS_PASSWORD` | Encrypted PDF without the right password | On `/review`, type the password; or add it as a new line in `sample_data\.pdf_password` and select the file again |
+| A PDF copied into `data\documents\` does not appear anywhere | That folder is the app's internal store (files named by their SHA-256) | Put statements in `sample_data\` or upload them |
 | Status `NEEDS_OCR` | Scanned PDF (no text layer) | Not supported yet (Stage 10) |
 | The server window closes or stops on its own | Windows was low on memory, or the window was closed | Start it again; close other heavy programs |
 

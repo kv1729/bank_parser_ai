@@ -17,7 +17,7 @@ import hashlib
 from bank_parser.extraction.generic_rules import GENERIC_HEADER_RULES, identify_bank
 from bank_parser.extraction.header import apply_header_rules, resolve_pages
 from bank_parser.extraction.inference import infer_layouts
-from bank_parser.learning.markers import MAX_MARKERS, candidate_labels, choose_markers
+from bank_parser.learning.markers import MAX_MARKERS, candidate_labels, choose_markers, heading_runs
 from bank_parser.templates.model import Template, now_iso
 
 
@@ -71,7 +71,8 @@ class HeuristicProposer(Proposer):
             bank_code, bank_name = identify_bank(values.get("header.ifsc"), ctx.text)
             personal = [str(values.get(k, "")) for k in ("header.account_holder_name", "header.account_holder_address",
                                                           "header.branch", "header.bank_address")]
-            markers = choose_markers(ctx.text, personal)
+            markers = choose_markers(ctx.text, personal,
+                                     heading_labels=heading_runs(ctx.text, cand.spec.header_tokens))
             existing = ctx.registry_layout_for(bank_code, markers)
             layout_id = existing or f"layout-{layout_fingerprint(bank_code, markers, cand.spec)}"
             required = ["balance_chain"] if any(c.role == "balance" for c in cand.spec.columns) else []

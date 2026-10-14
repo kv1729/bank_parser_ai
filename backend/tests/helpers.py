@@ -16,7 +16,8 @@ REAL_PASSWORD_FILE = REPO_ROOT / "sample_data" / ".pdf_password"
 
 def real_statement():
     if REAL_PDF.exists() and REAL_PASSWORD_FILE.exists():
-        return REAL_PDF, REAL_PASSWORD_FILE.read_text(encoding="utf-8").strip()
+        from bank_parser.pdf.passwords import find_password, read_password_file
+        return REAL_PDF, find_password(REAL_PDF, read_password_file(REAL_PASSWORD_FILE))
     return None, None
 
 

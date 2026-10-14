@@ -102,3 +102,24 @@ def test_pdfium_is_safe_under_concurrent_use():
         words = list(pool.map(parse, range(48)))
     assert all(r == b"\x89PNG\r\n\x1a\n" for r in renders)
     assert len(set(words[0::2])) == 1 and len(set(words[1::2])) == 1   # same result every time
+
+
+def test_password_file_one_per_line_and_lookup(tmp_path):
+    from bank_parser.pdf.passwords import find_password, read_password_file
+    f = tmp_path / ".pdf_password"
+    f.write_text("first\n\n  second  \n", encoding="utf-8")
+    assert read_password_file(f) == ["first", "second"]
+    assert read_password_file(tmp_path / "missing") == []
+    assert find_password(SBI_PDF, ["first", "second"]) is None          # unencrypted: no password needed
+
+
+@pytest.mark.skipif(not have_pymupdf(), reason="pymupdf needed to build an encrypted test PDF")
+def test_find_password_picks_the_line_that_opens_the_pdf(tmp_path):
+    import pymupdf
+    from bank_parser.pdf.passwords import find_password
+    doc = pymupdf.open(SBI_PDF)
+    locked = tmp_path / "locked.pdf"
+    doc.save(locked, encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="right", owner_pw="o")
+    doc.close()
+    assert find_password(locked, ["wrong", "right"]) == "right"
+    assert find_password(locked, ["wrong"]) is None

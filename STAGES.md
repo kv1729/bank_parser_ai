@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 7 — Accuracy corpus. The review screen (`/review`) is built; next the owner reviews statements in it. Stage 8 is paused: its remaining items wait on Stage 7 results. Open owner items are listed under Stage 7.
+**Now:** Stage 7 — fix the `Sr No`/`₹` layout gap, then the owner approves the first golden statements. **Next:** Stage 9 (golden regression gate) → Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -12,12 +12,15 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 4 | Product architecture | Done | 2026-10-03 | 2026-10-03 |
 | 5 | Documentation & developer workflow | Done (owner review pending) | 2026-10-04 | 2026-10-04 |
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
-| 7 | Accuracy corpus & benchmark | In progress | 2026-10-06 | — |
-| 8 | Robustness & speed | Paused (speed work done; rest waits on Stage 7) | 2026-10-05 | — |
-| 9 | LLM-assisted template proposer (only if Stage 7/8 shows a need) | Not started | — | — |
-| 10 | OCR for scanned PDFs | Not started | — | — |
-| 11 | Production hardening (auth, deployment, persistent jobs) | Not started | — | — |
-| 12 | MCP / agent interface | Not started | — | — |
+| 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
+| 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
+| 9 | Golden set & non-regression gate | Not started | — | — |
+| 10 | Local AI agent (open-source model), trained with human review | Not started | — | — |
+| 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
+| 12 | Password vault & intake | Not started | — | — |
+| 13 | OCR for scanned PDFs | Not started | — | — |
+| 14 | Production hardening | Not started | — | — |
+| 15 | MCP / agent interface | Not started | — | — |
 
 \* One open item carried forward: sample-data PII decision (docs/DECISIONS.md D-004).
 
@@ -98,7 +101,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - App, benchmark and privacy gate work from the new locations.
   - The PR is reviewed.
 
-## 7. Accuracy corpus & benchmark — In progress
+## 7. Accuracy corpus, review & first golden statements — In progress
 
 - **Goal:** Measure accuracy on enough statements to make decisions (PLAN §12).
 - **Deliverables:**
@@ -107,6 +110,11 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Runbook (`docs/RUNBOOK.md`) and one-click launcher (`start-app.cmd`) after the owner's start-up failed (2026-10-07): starting from the repository root used the stale root `.venv` → `ModuleNotFoundError`.
   - [x] Real statement re-extracted with current code (extraction #8, 2026-10-07): 76/81 rows start with WDL/DEP TFR, none trailing; validation PASS. Owner compared one row against a direct reading and approved the output.
   - [x] CSV export of stored results (`backend/scripts/export_extraction.py`, runbook §4a).
+  - [x] `sample_data/.pdf_password` holds one password per line (2026-10-14): review import, re-extract, privacy gate, sensitive-string refresh, tests and benchmark try each line.
+  - [x] Second real statement (`dd6efc05…`): serial-number first column, `₹` amounts, header on page 1 only, newest-first order. Fixed (D-020): 35/36 rows verified; agent learned `boi/layout-23f4f42a/v1`. Earlier outputs identical (fingerprints).
+  - [x] Third real statement (`171b6c9d…`): serial-number first column, header-only grid, few labels. Extracted, 17/18 rows verified; agent learned `icici/layout-ec27b806/v1` (heading markers, D-020).
+  - [ ] Owner reviews statements 2 and 3 in `/review` (they show as NEEDS_REVIEW: first row unverifiable without an opening balance; some header fields not found).
+  - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
   - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.
@@ -119,39 +127,65 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
 
-## 8. Robustness & speed — Paused (speed work done early at the owner's request; the rest waits on Stage 7)
+## 8. Speed — Done (2026-10-14; remaining robustness items moved)
 
-- **Goal:** Close the gaps that Stage 7 exposes.
-- **Done early (owner request, 2026-10-05):**
+- **Delivered (owner request, 2026-10-05):**
   - [x] pypdfium2 default backend: ~18× faster than pdfplumber, free licence, output identical (D-015)
-  - [x] Free alternatives to paid MCP parsers reviewed; Docling is the candidate to test (D-016)
-- **Still to do (scoped by Stage 7 results):**
-  - [ ] Layouts with neither ruled cells nor text headers (test Docling here, D-016)
-  - [ ] A single parsing pass for classification and extraction
-  - [ ] Cross-backend equivalence check on every Stage 7 statement
-- **Exit criteria:** Defined at the start of the stage, from Stage 7 results.
+  - [x] Free alternatives to paid MCP parsers reviewed; Docling is a candidate (D-016)
+- **Moved (2026-10-14, D-019):**
+  - Layouts with a non-date first column, currency symbols → Stage 7.
+  - Layouts with neither ruled cells nor heading text → Stage 10 (agent; Docling as a candidate).
+  - Single parsing pass; cross-backend check on every new statement → Stage 9 (part of the regression run).
 
-## 9. LLM-assisted template proposer — Not started (conditional)
+## 9. Golden set & non-regression gate — Not started
 
-- **Goal:** Learn layouts that the heuristic proposer cannot.
-- **Start only if:** Stage 7/8 shows layouts ending in `HUMAN_REVIEW` that heuristics cannot fix.
-- **Exit criteria:** It learns those layouts, sends only redacted layout summaries, and stays within the token budget.
+- **Goal:** Nothing that worked before can break: every engine or template change is checked against every approved statement.
+- **Deliverables:**
+  - [ ] Golden store (local, private): PDF fingerprint, approved output snapshot, engine and template version, password reference.
+  - [ ] "Approve as golden" in the review screen (only with zero flags and verified arithmetic); human approval for now (D-019).
+  - [ ] `regress` command: re-extract every golden statement and compare field by field; readable diff.
+  - [ ] Gate in front of template saving (agent) and engine changes (pre-push hook for private statements; CI for synthetic ones).
+  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI.
+- **Exit criteria:**
+  - Changing one field of the engine output makes `regress` fail on the right statement and field.
+  - The agent cannot save a template that changes any golden output.
+  - The 3 real statements are golden.
 
-## 10. OCR for scanned PDFs — Not started
+## 10. Local AI agent (open-source model), trained with human review — Not started
 
-- **Goal:** Process image-only pages through the same validation. Free candidates: Tesseract / OCRmyPDF vs Docling (D-016).
-- **Start only after:** Stage 7 benchmark results on text PDFs are acceptable (PLAN §2).
+- **Goal:** Unknown layouts are extracted without a human: a local model reads the statement, proposes a template and, when no recipe fits, the extraction itself; everything passes the self-check and the regression gate.
+- **Deliverables:**
+  - [ ] Model choice: ≤ 3 free open-source candidates, ≤ 2 tested on this laptop (CPU) for accuracy, time and memory (D-019).
+  - [ ] AI template proposer (full statement content allowed: the model runs locally and nothing leaves the machine).
+  - [ ] AI fallback extraction: status `LEARNING`, then the self-checked result appears; known layouts stay on the fast path.
+  - [ ] Text checks beyond arithmetic (CHECKPOINT B5).
+  - [ ] Agent self-review per statement (what it checked, what it is unsure of, confidence per field), shown in the review screen; the owner gives feedback on the agent's review as well as the output (D-020).
+  - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
+  - [ ] Human flags and approvals stored as training examples for the agent.
+  - [ ] Evaluation on held-out statements: success rate, time, re-tries.
+- **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
+- **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).
 
-## 11. Production hardening — Not started
+## 11. Confidence & autonomy — Not started
+
+- **Goal:** Remove the human from the loop wherever the system has earned it.
+- **Deliverables:** Confidence score per document and field; agent auto-approval of golden snapshots per layout after a track record; automatic routing of low-confidence cases to a human; layout-drift detection; autonomy dashboard.
+- **Exit criteria (to be confirmed with the owner):** For a layout, the agent's results matched the human on ≥ 10 consecutive statements with zero corrections → that layout runs without human approval.
+
+## 12. Password vault & intake — Not started
+
+- **Goal:** Statements and their passwords come in one way and are found again automatically.
+- **Deliverables:** Passwords in Windows Credential Manager (`keyring`), keyed by document fingerprint, with a "Remember password" option; per-bank password profiles; one-time import from `sample_data/.pdf_password`; watched `inbox/` folder; BitLocker check; privacy-gate patterns for US identifiers (CHECKPOINT H5).
+
+## 13. OCR for scanned PDFs — Not started
+
+- **Goal:** Process image-only pages through the same checks. Free candidates: Tesseract / OCRmyPDF vs Docling (D-016), or a local vision model from Stage 10.
+
+## 14. Production hardening — Not started
 
 - **Goal:** Make the app safe to run beyond localhost.
-- **Deliverables:**
-  - Authentication
-  - Background jobs that survive restarts
-  - Deployment (e.g. Docker)
-  - Monitoring
-  - Safe logging
+- **Deliverables:** Authentication; background jobs that survive restarts; deployment (container); monitoring; safe logging; compliance controls from D-020: retention/deletion policy, audit log, breach-response runbook (CHECKPOINT H2–H4).
 
-## 12. MCP / agent interface — Not started
+## 15. MCP / agent interface — Not started
 
-- **Goal:** Expose `parse_statement` to agents, only if an agent will consume it (PLAN §16).
+- **Goal:** Expose `parse_statement` to other agents, only if one will consume it (PLAN §16).

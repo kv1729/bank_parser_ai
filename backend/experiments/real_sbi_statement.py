@@ -10,7 +10,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 from bank_parser import Statement, StatementHeader, Transaction, validate_balance_chain
 
 P = REPO_ROOT / "sample_data/AccountStatement_02102026_120158.pdf"
-PW = open(REPO_ROOT / "sample_data/.pdf_password", encoding="utf-8").read().strip()
+from bank_parser.pdf.passwords import find_password, read_password_file
+PW = find_password(P, read_password_file(REPO_ROOT / "sample_data/.pdf_password"))
 
 def money(s):
     s = (s or "").strip()

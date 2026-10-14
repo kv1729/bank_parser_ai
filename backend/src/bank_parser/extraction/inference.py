@@ -12,7 +12,8 @@ from dataclasses import dataclass, replace
 import re
 
 from bank_parser.extraction.parsing import CANDIDATE_DATE_FORMATS, is_amount, parse_date, ParseError
-from bank_parser.extraction.table import assemble_rows
+from bank_parser.extraction.lines import group_lines
+from bank_parser.extraction.table import _is_header_line, assemble_rows
 from bank_parser.templates.model import Column, TableSpec
 
 MAX_LAYOUT_PAGES = 4        # pages scanned for the table header
@@ -35,6 +36,7 @@ class LayoutCandidate:
     header_page: int
     role_source: str          # "header_text" | "content" | "content+chain"
     note: str = ""
+    labels: tuple = ()        # text of the header-row cells (schema; used for layout markers)
 
 
 def _header_rows(cells_doc, page_count):
@@ -130,22 +132,26 @@ def infer_layouts(cells_doc, doc):
         header_tokens = tuple(dict.fromkeys(w.text for w in band))
         min_tokens = min(2, len(header_tokens)) if header_tokens else 1
 
-        # Provisional pass: first column is the date; keep every other column's text.
-        cols = [Column("txn_date", bounds[0], bounds[1])] + [
-            Column("ignore", bounds[i], bounds[i + 1], label=f"c{i}") for i in range(1, len(cells))]
-        probe = TableSpec(tuple(cols), CANDIDATE_DATE_FORMATS, header_tokens, min_tokens)
-        pages = [doc.page(n) for n in range(page_no, min(count, page_no + 2) + 1)]
-        rows, _ = assemble_rows(pages, probe)
-        if len(rows) < 2:
+        # Which column holds the transaction date? Heading words first ("Date", "Transaction
+        # Date"), then the first columns by content. Layouts may lead with a serial-number column
+        # ("Sr No", "S No."), so the date is not always column 1 (DECISIONS.md D-020).
+        label_roles = _label_roles(labels)
+        order = ([label_roles.index("txn_date")] if "txn_date" in label_roles else []) + list(range(min(3, len(cells))))
+        found = None
+        for d in dict.fromkeys(order):
+            rows, fmt = _probe(doc, page_no, count, bounds, d, header_tokens, min_tokens)
+            if len(rows) >= 2 and fmt is not None:
+                found = d
+                break
+        if found is None:
             continue
-        date_samples = [r.text("txn_date") for r in rows if r.text("txn_date")]
-        fmt = choose_date_format(date_samples)
-        if fmt is None:
-            continue
-        keys = ["txn_date"] + [f"c{i}" for i in range(1, len(cells))]
+        keys = ["txn_date" if i == found else f"c{i}" for i in range(len(cells))]
         stats = _column_stats(rows, keys)
+        on_every_page = _header_repeats(doc, page_no, count,
+                                        TableSpec((Column("txn_date", bounds[0], bounds[-1]),), (fmt,),
+                                                  header_tokens, min_tokens))
 
-        roles = _label_roles(labels)
+        roles = list(label_roles)
         source = "header_text"
         if not _roles_usable(roles, stats, keys):
             roles = _content_roles(stats, keys)
@@ -155,11 +161,30 @@ def infer_layouts(cells_doc, doc):
             columns = tuple(Column(r or "ignore", bounds[i], bounds[i + 1],
                                    label=None if r else _safe_label(labels[i], i))
                             for i, r in enumerate(assignment))
-            spec = TableSpec(columns, (fmt,), header_tokens, min_tokens)
-            candidates.append(LayoutCandidate(spec, page_no, source + extra_note))
+            spec = TableSpec(columns, (fmt,), header_tokens, min_tokens, header_on_every_page=on_every_page)
+            candidates.append(LayoutCandidate(spec, page_no, source + extra_note, labels=tuple(labels)))
         if candidates:
             return candidates
     return []
+
+
+def _probe(doc, page_no, count, bounds, date_index, header_tokens, min_tokens):
+    """Assemble rows on the header page and the next two, treating column `date_index` as the date."""
+    cols = tuple(Column("txn_date", bounds[i], bounds[i + 1]) if i == date_index else
+                 Column("ignore", bounds[i], bounds[i + 1], label=f"c{i}") for i in range(len(bounds) - 1))
+    probe = TableSpec(cols, CANDIDATE_DATE_FORMATS, header_tokens, min_tokens)
+    pages = [doc.page(n) for n in range(page_no, min(count, page_no + 2) + 1)]
+    rows, _ = assemble_rows(pages, probe)
+    samples = [r.text("txn_date") for r in rows if r.text("txn_date")]
+    return rows, (choose_date_format(samples) if len(rows) >= 2 else None)
+
+
+def _header_repeats(doc, page_no, count, spec):
+    """True when the column-header row is printed again on the following pages (checked up to 3)."""
+    for n in range(page_no + 1, min(count, page_no + 3) + 1):
+        if not any(_is_header_line(line, spec) for line in group_lines(doc.page(n).words, spec.line_tolerance)):
+            return False
+    return True
 
 
 def _safe_label(label, i):
@@ -202,7 +227,7 @@ def _content_roles(stats, keys):
         others = [i for i in text_cols if i != desc]
         if others:
             roles[others[0]] = "reference"
-    if roles[0] is None:
+    if "txn_date" not in roles and roles[0] is None:
         roles[0] = "txn_date"
     return roles
 

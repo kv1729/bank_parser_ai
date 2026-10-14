@@ -17,6 +17,7 @@ import time
 from pathlib import Path
 
 from bank_parser.core.schema import StatementHeader, StatementSummary
+from bank_parser.pdf.passwords import find_password, read_password_file
 
 PASSWORD_TTL_SECONDS = 4 * 3600
 MAX_REMARKS_CHARS = 20_000
@@ -97,10 +98,9 @@ class ReviewSources:
         return d, path
 
     @staticmethod
-    def default_password(source_dir):
-        """A folder may hold its statements' password in a local `.pdf_password` file."""
-        f = source_dir.path / ".pdf_password"
-        return f.read_text(encoding="utf-8").strip() or None if f.is_file() else None
+    def default_password(source_dir, pdf_path):
+        """The password (from the folder's `.pdf_password`, one per line) that opens this PDF, or None."""
+        return find_password(pdf_path, read_password_file(source_dir.path / ".pdf_password"))
 
 
 def validate_review(statement, flags, remarks):

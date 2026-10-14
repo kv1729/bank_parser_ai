@@ -171,3 +171,95 @@ def test_clearly_spaced_line_still_continues_the_previous_row():
     from bank_parser.extraction.table import assemble_rows
     rows, _ = assemble_rows([_synthetic_page(lead_gap=7.0)], _spec())
     assert rows[0].text("description").endswith("SHOP ONE DEP TFR")
+
+
+# --- D-020: serial-number first column, currency symbols, header only on page 1, newest first ------------
+
+@pytest.mark.parametrize("text, value", [
+    ("₹ 1,00,780.16", Decimal("100780.16")), ("Rs. 50.00", Decimal("50.00")), ("INR 10", Decimal("10")),
+    ("$12.00", Decimal("12.00")), ("12.00 USD", Decimal("12.00")), ("-₹ 5.00", Decimal("-5.00")),
+    ("(₹ 5.00)", Decimal("-5.00")),
+])
+def test_parse_amount_with_currency(text, value):
+    assert parse_amount(text)[0] == value
+
+
+class _FakeDoc:
+    """Minimal stand-in for an open PDF: positioned words per page and ruled header cells."""
+    backend = "fake"
+
+    def __init__(self, pages, header_cells):
+        self.pages, self.header_cells = pages, header_cells
+
+    @property
+    def page_count(self):
+        return len(self.pages)
+
+    def page(self, number, with_rects=False):
+        return self.pages[number - 1]
+
+    def find_table_cells(self, number):
+        return (self.header_cells,) if number == 1 else ()
+
+
+def _serial_layout_statement():
+    """'Sr No | Date | Remarks | Debit | Credit | Balance', rupee amounts, header printed on page 1 only;
+    page 2 starts with a letterhead line above the table."""
+    from bank_parser.pdf.backend import PageLayout, Word
+    xs = [20, 60, 130, 330, 400, 470, 560]
+    labels = ["Sr No", "Date", "Remarks", "Debit", "Credit", "Balance"]
+    header_cells = tuple((xs[i], 100, xs[i + 1], 112) for i in range(6))
+
+    def row(y, sr, date, text, debit, credit, bal):
+        out = [Word(sr, 25, 35, y, y + 9), Word(date, 65, 120, y, y + 9), Word(text, 135, 250, y, y + 9)]
+        if debit:
+            out += [Word("₹", 335, 342, y, y + 9), Word(debit, 345, 390, y, y + 9)]
+        if credit:
+            out += [Word("₹", 405, 412, y, y + 9), Word(credit, 415, 460, y, y + 9)]
+        return out + [Word("₹", 475, 482, y, y + 9), Word(bal, 485, 550, y, y + 9)]
+
+    head = []
+    for i, label in enumerate(labels):
+        x = xs[i] + 3
+        for part in label.split():
+            head.append(Word(part, x, x + 20, 101, 110)); x += 24
+    p1 = head + row(120, "1", "01-09-2026", "OPENING-TFR", None, "1,000.00", "1,000.00") \
+              + row(135, "2", "02-09-2026", "SHOP-A", "100.00", None, "900.00") \
+              + row(150, "3", "03-09-2026", "SHOP-B", "50.00", None, "850.00")
+    p2 = [Word("Statement", 20, 120, 30, 40), Word("page", 130, 170, 30, 40), Word("2", 175, 180, 30, 40)] \
+         + row(60, "4", "04-09-2026", "SALARY-X", None, "2,000.00", "2,850.00") \
+         + row(75, "5", "05-09-2026", "RENT-Y", "1,500.00", None, "1,350.00")
+    pages = [PageLayout(1, 595, 842, tuple(p1)), PageLayout(2, 595, 842, tuple(p2))]
+    return _FakeDoc(pages, header_cells)
+
+
+def test_inference_finds_date_column_after_serial_number_and_reads_header_less_pages():
+    from bank_parser.extraction.inference import infer_layouts
+    from bank_parser.extraction.table import assemble_rows, rows_to_transactions
+    from bank_parser.core.schema import Statement, StatementHeader
+    doc = _serial_layout_statement()
+    spec = infer_layouts(doc, doc)[0].spec
+    assert [c.role for c in spec.columns] == ["ignore", "txn_date", "description", "debit", "credit", "balance"]
+    assert spec.header_on_every_page is False
+    rows, _ = assemble_rows(doc.pages, spec)
+    txns, problems = rows_to_transactions(rows, spec)
+    assert problems == [] and len(txns) == 5                      # page 2's letterhead is skipped, its rows kept
+    assert [t.description for t in txns] == ["OPENING-TFR", "SHOP-A", "SHOP-B", "SALARY-X", "RENT-Y"]
+    assert txns[1].debit == Decimal("100.00") and txns[3].credit == Decimal("2000.00")
+    chain = validate_statement(Statement(StatementHeader(), txns)).checks[0]
+    assert chain.check == "balance_chain" and chain.rows_checked == 4 and [i.code for i in chain.issues] == ["no_opening_balance"]
+
+
+def test_newest_first_statement_validates_in_chronological_order(registry):
+    from dataclasses import replace
+    from bank_parser.core.validation import validate_balance_chain, validate_rows
+    with open_pdf(SBI_PDF) as doc:
+        s = extract_with_template(doc, _latest(registry, SBI_LAYOUT)).statement
+    newest_first = replace(s, transactions=tuple(reversed(s.transactions)))
+    assert validate_balance_chain(newest_first).status is Status.PASS
+    assert validate_rows(newest_first).status is Status.PASS
+    t = newest_first.transactions[5]
+    broken = replace(newest_first, transactions=newest_first.transactions[:5]
+                     + (replace(t, debit=(t.debit or Decimal(0)) + 1) if t.debit else replace(t, credit=t.credit + 1),)
+                     + newest_first.transactions[6:])
+    assert validate_balance_chain(broken).status is Status.FAIL

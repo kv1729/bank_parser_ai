@@ -1,6 +1,6 @@
 # Bank Statement Parser — Claude Code notes
 
-**Progress: `STAGES.md`.** Update it at the end of every session (global rule 2).
+**Progress: `STAGES.md`** (the work plan; update it at the end of every session, global rule 2) and **`CHECKPOINT.md`** (goal checklist: how far from the final goal; tick items with evidence when they are done).
 
 | Document | Purpose |
 | --- | --- |

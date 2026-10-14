@@ -60,6 +60,23 @@ def _status_for(issues, rows_checked):
     return Status.PASS if rows_checked else Status.SKIP
 
 
+def newest_first(txns):
+    """True when a statement lists transactions newest first (some banks do, D-020).
+    Decided by majority, so a few same-day or out-of-order rows do not flip it."""
+    dates = [getattr(t, "txn_date", None) for t in txns]
+    if len(dates) < 2 or any(d is None for d in dates):
+        return False
+    down = sum(1 for a, b in zip(dates, dates[1:]) if a > b)
+    up = sum(1 for a, b in zip(dates, dates[1:]) if a < b)
+    return down > up
+
+
+def chronological(txns):
+    """Transactions oldest first, whatever order the statement prints them in."""
+    txns = tuple(txns)
+    return tuple(reversed(txns)) if newest_first(txns) else txns
+
+
 def validate_balance_chain(statement):
     """
     Check that every row satisfies: previous balance - debit + credit = balance.
@@ -73,7 +90,7 @@ def validate_balance_chain(statement):
     issues = []
 
     try:
-        txns = tuple(statement.transactions)
+        txns = chronological(statement.transactions)     # newest-first statements are checked oldest first
         opening = statement.header.opening_balance
     except (AttributeError, TypeError) as e:
         return CheckResult(check, Status.FAIL,
@@ -173,8 +190,9 @@ def validate_reconciliation(statement):
         if extracted != printed:
             issues.append(Issue(code, Severity.FAIL, f"extracted {extracted}, statement prints {printed}"))
 
-    if _usable(header.closing_balance) and txns and _usable(txns[-1].balance):
-        compare("closing_balance_mismatch", txns[-1].balance, header.closing_balance)
+    latest = chronological(txns)[-1] if txns else None
+    if _usable(header.closing_balance) and latest is not None and _usable(latest.balance):
+        compare("closing_balance_mismatch", latest.balance, header.closing_balance)
     if _usable(header.closing_balance) and _usable(header.opening_balance):
         debits = [t.debit for t in txns if _usable(t.debit)]
         credits = [t.credit for t in txns if _usable(t.credit)]
@@ -204,6 +222,7 @@ def validate_rows(statement):
     except (AttributeError, TypeError) as e:
         return CheckResult(check, Status.FAIL, (Issue("malformed_statement", Severity.FAIL, str(e)),))
     prev_date = None
+    descending = newest_first(txns)           # the statement's own order is accepted in either direction
     for pos, t in enumerate(txns):
         row, page = getattr(t, "row_index", pos), getattr(t, "page", None)
         d, c = getattr(t, "debit", None), getattr(t, "credit", None)
@@ -213,7 +232,7 @@ def validate_rows(statement):
         if when is None:
             issues.append(Issue("missing_date", Severity.FAIL, "row has no transaction date", row, page))
             continue
-        if prev_date is not None and when < prev_date:
+        if prev_date is not None and (when > prev_date if descending else when < prev_date):
             issues.append(Issue("date_out_of_order", Severity.WARN, "date earlier than previous row", row, page))
         if (start and when < start) or (end and when > end):
             issues.append(Issue("date_outside_period", Severity.WARN, "date outside statement period", row, page))

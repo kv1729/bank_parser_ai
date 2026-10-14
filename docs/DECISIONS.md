@@ -301,3 +301,89 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
 - Page images retry once, then offer a click-to-retry placeholder.
 - Pending edits are saved before the screen switches documents.
 - **Re-extract** (`POST /api/documents/{id}/reprocess`, a link in the output pane) runs extraction again with the current code. The result is a new extraction; a saved review stays attached to the extraction it was made on.
+
+## D-019 — Direction: from human review to an autonomous local agent
+
+- **Date:** 2026-10-14 (owner decisions after the second real statement failed layout inference)
+- **Goal:** Remove the human from the loop and extract with measurable confidence. The human trains the system first and is phased out per layout as confidence is earned.
+
+**Two different checks** (named so they are not confused):
+
+| | Self-check | Regression |
+| --- | --- | --- |
+| When | Every new statement, including unknown layouts | Every engine or template change |
+| Compares against | The statement itself: balance chain, printed totals and counts, dates, formats | Approved ("golden") snapshots of earlier statements, field by field |
+| Proves | Numbers and row order are right; *not* text fields | Nothing that worked before broke |
+| Status | Built | Stage 9 |
+
+**Decisions:**
+1. **Extraction never waits for learning.** Known layouts and recipe-guessable layouts extract immediately. When no recipe or template fits, the local agent extracts; the document shows `LEARNING` until its self-checked result is stored. Meanwhile the agent learns a reusable template, which must pass the regression gate before it is saved.
+2. **The agent may see full statement content.** It runs a **free, open-source model locally** (via Ollama, already installed), so no statement data leaves the machine and no data-processing agreement is needed.
+   - If a cloud model is ever used, it needs a data-processing agreement and zero data retention.
+   - A BAA is the US health-data (HIPAA) instrument; bank statements in India fall under the DPDP Act 2023.
+   - Claude, the development assistant, still sees only masked or aggregate output (global rule 3).
+3. **Model:** open-source and free. Up to 3 candidates, up to 2 tested in Stage 10, chosen for this laptop.
+   - **Hardware:** CPU inference, 16 GB RAM (about 2.5 GB free when measured), 2 GB GPU. Realistic sizes are 3–8 B parameters, quantised.
+   - **Installed:** gemma:2b, qwen:4b, phi3:mini, mistral 7B — an older generation.
+   - **Candidates to evaluate:** current small instruct models with permissive licences, e.g. Qwen2.5-7B / 3B-Instruct (Apache-2.0) and Llama-3.2-3B-Instruct (community licence); a vision variant later for OCR.
+   - **Expect:** seconds to minutes per new layout on CPU. Acceptable for learning once; a first extraction of an unseen layout is slower than the template path until better hardware is available.
+4. **Golden approval:** a human approves first, in the review screen, with zero flags and verified arithmetic. The agent approves later, per layout, after a measured track record (Stage 11; proposed threshold: 10 consecutive statements matching the human with zero corrections).
+5. **Order:**
+   1. Stage 7: `Sr No`/`₹` fix (rule-based, fast path) and first golden statements.
+   2. Stage 9: golden set and regression gate — the prerequisite for any automatic change.
+   3. Stage 10: local AI agent.
+   4. Stage 11: autonomy.
+   5. Stage 12: password vault and intake.
+   6. Then OCR, hardening and MCP.
+6. **Tracking:** `CHECKPOINT.md` is the goal checklist (capabilities, % done); `STAGES.md` stays the work plan.
+
+## D-020 — More layouts, US data and compliance, agent self-review
+
+- **Date:** 2026-10-14
+
+### Layout fixes (statements 2 and 3, both real)
+
+| Gap | Fix | Where |
+| --- | --- | --- |
+| First column is a serial number (`Sr No`, `S No.`), so the date is not column 1 | The date column comes from the heading words, otherwise from the first three columns by content. The order tried starts with today's choice, so earlier layouts are unaffected | `extraction/inference.py` |
+| Amounts printed with `₹`, `Rs.`, `INR`, `$`, `USD` | Currency markers removed before parsing; sign and parentheses kept | `extraction/parsing.py` |
+| Column header printed on page 1 only (statement 2) | The template records `header_on_every_page = False`. On such pages, text above the table is skipped instead of ending the page | `inference.py`, `table.py` |
+| Statement lists transactions **newest first** (statement 2) | Balance chain, date order and closing balance are checked in chronological order, whichever way the statement prints them | `core/validation.py` |
+| Too few `Label :` markers to recognise the layout (statement 3) | Fallback: runs of statement words on the printed column-header lines. Used only when fewer than 2 label markers exist, so earlier layouts keep identical markers | `learning/markers.py` |
+
+- **Evidence:**
+  - Fingerprints (SHA-256 of the full output) of the three statements that already worked are **identical** before and after, on both PDF backends and both paths.
+  - Statement 2: 36 rows, 35 verified by the balance chain (the first cannot be: no opening balance printed). The agent learned `boi/layout-23f4f42a/v1`.
+  - Statement 3: 18 rows, 17 verified. The agent learned `icici/layout-ec27b806/v1`.
+  - Both templates were checked against the 3 other layouts. 185 tests pass, including synthetic regression tests for each fix.
+- **Known limitation:** on statement 3 (rows without grid lines, tightly packed), **pdfplumber** merges one description line into the next row; **pypdfium2 (the default) is correct**, confirmed by the PDF's own text order. Changing line grouping could affect older layouts, so it waits for the Stage 9 regression gate.
+
+### US bank data (future) and compliance
+
+*Engineering summary, not legal advice: confirm with counsel before handling real customer data.*
+
+| Jurisdiction | Main obligations relevant to us |
+| --- | --- |
+| **India (now): DPDP Act 2023** | Lawful purpose and consent; data minimisation; reasonable security safeguards; breach notification to the Data Protection Board and to affected people; deletion when the purpose is served |
+| **US: GLBA** (Privacy Rule; FTC Safeguards Rule for non-bank financial service providers) | Written information-security programme; risk assessment; encryption in transit and at rest; MFA and access control; vendor oversight; incident response; notify the FTC of breaches affecting ≥ 500 people |
+| **US states** | Breach-notification laws in every state; CCPA/CPRA (partly exempt for GLBA data); NY SHIELD; NYDFS Part 500 if serving NY-regulated entities |
+| **PCI DSS** | Only if full card numbers are stored. Avoid by keeping card numbers masked |
+| **SOC 2** | Not a law, but usually required by business customers |
+
+- **Engineering consequences (planned):**
+  - Stage 12: encryption at rest and a secrets vault.
+  - Stage 14: authentication and access control, audit log, retention and deletion policy, breach-response runbook.
+  - Ongoing: privacy-gate patterns for US identifiers (SSN, ABA routing, card numbers); keep the AI model local so no vendor receives the data.
+- **US format differences:**
+  - MM/DD/YYYY dates are ambiguous with DD/MM; the format chooser prefers chronologically consistent readings, and a per-bank locale will be recorded in templates.
+  - `$` amounts are now parsed; parentheses mean negative.
+  - ABA routing numbers replace IFSC, so header validators become locale-aware.
+
+### Agent self-review (owner requirement)
+
+For every statement the agent builds, it also writes **its own review**:
+- what it checked;
+- which fields or rows it is unsure of, and why;
+- a confidence per field.
+
+The review screen will show that review beside the output. The owner gives feedback on **both** the extraction and the agent's review (agree/disagree per item, plus remarks). The feedback is stored as training material and drives the autonomy decision in Stage 11.

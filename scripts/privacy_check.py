@@ -4,7 +4,7 @@ Privacy gate for commits (run by .githooks/pre-commit and commit-msg).
 Blocks a commit when staged files (or the commit message) contain:
   - forbidden paths: runtime data, databases, passwords, expected outputs,
     archify receipts, or any PDF other than the committed synthetic samples;
-  - the PDF password (sample_data/.pdf_password);
+  - the PDF passwords (sample_data/.pdf_password, one per line);
   - any string in .git/info/sensitive-strings (local only, never committed;
     refresh with backend/scripts/refresh_sensitive_strings.py);
   - email addresses or PAN-shaped strings not on the allowlist below.
@@ -43,7 +43,9 @@ def sensitive_strings():
     values = []
     pw = ROOT / "sample_data" / ".pdf_password"
     if pw.exists():
-        values.append(("pdf password", pw.read_text(encoding="utf-8").strip()))
+        for line in pw.read_text(encoding="utf-8").splitlines():   # one password per line
+            if line.strip():
+                values.append(("pdf password", line.strip()))
     listed = ROOT / ".git" / "info" / "sensitive-strings"
     if listed.exists():
         for line in listed.read_text(encoding="utf-8").splitlines():

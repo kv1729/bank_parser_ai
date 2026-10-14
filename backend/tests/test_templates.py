@@ -87,3 +87,23 @@ def test_markers_never_include_personal_values():
     markers = choose_markers(text, forbidden_values=["Mr. Some Person"])
     assert "Account Number" in markers and "IFSC Code" in markers
     assert not any("Person" in m or "Some" in m or "Main" in m for m in markers)
+
+
+def test_heading_markers_only_when_labels_are_scarce():
+    text_few = "Account Number : 123\nsome text"
+    headings = ["S No.", "Transaction Date", "Withdrawal Amount (INR)", "Balance (INR)", "Mr Some Person"]
+    markers = choose_markers(text_few, heading_labels=headings)
+    assert markers[0] == "Account Number"
+    assert "Transaction Date" in markers and "Withdrawal Amount (INR)" in markers
+    assert not any("Person" in m for m in markers)                     # only vocabulary words qualify
+    text_many = "Account Number : 1\nIFSC Code : X\nBranch Code : 2"
+    assert choose_markers(text_many, heading_labels=headings) == choose_markers(text_many)   # unchanged
+
+
+def test_heading_runs_follow_printed_lines():
+    from bank_parser.learning.markers import heading_runs
+    text = "S Transaction Cheque Transaction Withdrawal Deposit Balance\nNo. Date Number Remarks Amount (INR) Amount (INR) (INR)\n01.09 row"
+    tokens = "S Transaction Cheque Withdrawal Deposit Balance No. Date Number Remarks Amount (INR)".split()
+    runs = heading_runs(text, tokens)
+    assert "Transaction Cheque Transaction Withdrawal Deposit Balance" in runs
+    assert all(r in text for r in runs)                                  # always contiguous in the text

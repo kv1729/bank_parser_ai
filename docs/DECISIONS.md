@@ -336,3 +336,54 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
    5. Stage 12: password vault and intake.
    6. Then OCR, hardening and MCP.
 6. **Tracking:** `CHECKPOINT.md` is the goal checklist (capabilities, % done); `STAGES.md` stays the work plan.
+
+## D-020 — More layouts, US data and compliance, agent self-review
+
+- **Date:** 2026-10-14
+
+### Layout fixes (statements 2 and 3, both real)
+
+| Gap | Fix | Where |
+| --- | --- | --- |
+| First column is a serial number (`Sr No`, `S No.`), so the date is not column 1 | The date column comes from the heading words, otherwise from the first three columns by content. The order tried starts with today's choice, so earlier layouts are unaffected | `extraction/inference.py` |
+| Amounts printed with `₹`, `Rs.`, `INR`, `$`, `USD` | Currency markers removed before parsing; sign and parentheses kept | `extraction/parsing.py` |
+| Column header printed on page 1 only (statement 2) | The template records `header_on_every_page = False`. On such pages, text above the table is skipped instead of ending the page | `inference.py`, `table.py` |
+| Statement lists transactions **newest first** (statement 2) | Balance chain, date order and closing balance are checked in chronological order, whichever way the statement prints them | `core/validation.py` |
+| Too few `Label :` markers to recognise the layout (statement 3) | Fallback: runs of statement words on the printed column-header lines. Used only when fewer than 2 label markers exist, so earlier layouts keep identical markers | `learning/markers.py` |
+
+- **Evidence:**
+  - Fingerprints (SHA-256 of the full output) of the three statements that already worked are **identical** before and after, on both PDF backends and both paths.
+  - Statement 2: 36 rows, 35 verified by the balance chain (the first cannot be: no opening balance printed). The agent learned `boi/layout-23f4f42a/v1`.
+  - Statement 3: 18 rows, 17 verified. The agent learned `icici/layout-ec27b806/v1`.
+  - Both templates were checked against the 3 other layouts. 185 tests pass, including synthetic regression tests for each fix.
+- **Known limitation:** on statement 3 (rows without grid lines, tightly packed), **pdfplumber** merges one description line into the next row; **pypdfium2 (the default) is correct**, confirmed by the PDF's own text order. Changing line grouping could affect older layouts, so it waits for the Stage 9 regression gate.
+
+### US bank data (future) and compliance
+
+*Engineering summary, not legal advice: confirm with counsel before handling real customer data.*
+
+| Jurisdiction | Main obligations relevant to us |
+| --- | --- |
+| **India (now): DPDP Act 2023** | Lawful purpose and consent; data minimisation; reasonable security safeguards; breach notification to the Data Protection Board and to affected people; deletion when the purpose is served |
+| **US: GLBA** (Privacy Rule; FTC Safeguards Rule for non-bank financial service providers) | Written information-security programme; risk assessment; encryption in transit and at rest; MFA and access control; vendor oversight; incident response; notify the FTC of breaches affecting ≥ 500 people |
+| **US states** | Breach-notification laws in every state; CCPA/CPRA (partly exempt for GLBA data); NY SHIELD; NYDFS Part 500 if serving NY-regulated entities |
+| **PCI DSS** | Only if full card numbers are stored. Avoid by keeping card numbers masked |
+| **SOC 2** | Not a law, but usually required by business customers |
+
+- **Engineering consequences (planned):**
+  - Stage 12: encryption at rest and a secrets vault.
+  - Stage 14: authentication and access control, audit log, retention and deletion policy, breach-response runbook.
+  - Ongoing: privacy-gate patterns for US identifiers (SSN, ABA routing, card numbers); keep the AI model local so no vendor receives the data.
+- **US format differences:**
+  - MM/DD/YYYY dates are ambiguous with DD/MM; the format chooser prefers chronologically consistent readings, and a per-bank locale will be recorded in templates.
+  - `$` amounts are now parsed; parentheses mean negative.
+  - ABA routing numbers replace IFSC, so header validators become locale-aware.
+
+### Agent self-review (owner requirement)
+
+For every statement the agent builds, it also writes **its own review**:
+- what it checked;
+- which fields or rows it is unsure of, and why;
+- a confidence per field.
+
+The review screen will show that review beside the output. The owner gives feedback on **both** the extraction and the agent's review (agree/disagree per item, plus remarks). The feedback is stored as training material and drives the autonomy decision in Stage 11.

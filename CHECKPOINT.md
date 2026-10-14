@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-14. This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-14 (after D-020). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -14,14 +14,15 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 
 | Area | Done | Total | Status |
 |---|---|---|---|
-| A. Extraction core | 6 | 8 | 🟡 |
+| A. Extraction core | 7 | 8 | 🟡 |
 | B. Self-check of each extraction | 4 | 6 | 🟡 |
 | C. Regression safety (golden set) | 1 | 6 | ⬜ |
-| D. AI agent (learning new layouts) | 2 | 8 | ⬜ |
+| D. AI agent (learning new layouts) | 2 | 9 | ⬜ |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
-| **Total** | **18** | **45** | **40%** |
+| H. Compliance (India now, US later) | 1 | 6 | ⬜ |
+| **Total** | **20** | **52** | **38%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -35,7 +36,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | A4 | First description line above the date (current SBI layout) | ✅ | D-018 | 7 |
 | A5 | Versioned templates, never overwritten | ✅ | D-009 | 4 |
 | A6 | Known layout extracted in < 0.5 s | ✅ | 0.41 s for 9 pages (D-015) | 8 |
-| A7 | Layouts whose first column is not the date (e.g. `Sr No`), amounts with `₹`/`Rs.` | ⬜ | Second real statement fails (STAGES 7) | 7 |
+| A7 | Layouts whose first column is not the date (`Sr No`), currency symbols, header on page 1 only, newest-first order | ✅ | D-020: statements 2 and 3 extracted, templates learned; earlier outputs identical | 7 |
 | A8 | Layouts without ruled grid lines **and** without heading text | ⬜ | The agent's job (D), or Docling (D-016) | 10 |
 
 ## B. Self-check of each extraction (no expected answer needed)
@@ -72,6 +73,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | D6 | Every AI result passes the same self-check (B) and regression gate (C) | ⬜ | | 10 |
 | D7 | Learns from human corrections: flags and approvals become examples for the agent | ⬜ | | 10 |
 | D8 | Agent measured on held-out statements (success rate, time, re-tries) | ⬜ | | 10 |
+| D9 | Agent writes **its own review** of each statement it builds (what it checked, what it is unsure of, confidence per field); the owner reviews that review | ⬜ | Owner requirement (D-020) | 10 |
 
 ## E. Confidence & autonomy: removing the human
 
@@ -104,6 +106,19 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | G5 | Authentication | ⬜ | | 14 |
 | G6 | OCR for scanned statements | ⬜ | | 13 |
 | G7 | Deployment (container) and monitoring | ⬜ | | 14 |
+
+## H. Compliance (India now, US later)
+
+| # | Capability | Status | Evidence / where | Stage |
+|---|---|---|---|---|
+| H1 | Obligations documented: DPDP Act (India); GLBA, state breach laws, CCPA/CPRA, NYDFS, PCI DSS, SOC 2 (US) | ✅ | D-020 (engineering summary; legal review pending) | 7 |
+| H2 | Retention and deletion policy enforced in the app | ⬜ | | 14 |
+| H3 | Audit log of who accessed which statement | ⬜ | | 14 |
+| H4 | Breach-response runbook | ⬜ | | 14 |
+| H5 | Privacy gate recognises US identifiers (SSN, ABA routing, card numbers) | ⬜ | Today: PAN-shaped strings, emails, known values | 12 |
+| H6 | Locale-aware formats and validators (US dates, routing numbers instead of IFSC) | ⬜ | `$` amounts already parsed (D-020) | 10 |
+
+Also see F5 (encryption at rest) and G5 (authentication), which are compliance requirements too.
 
 ## What is holding the agent back
 

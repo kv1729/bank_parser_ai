@@ -13,6 +13,8 @@ CANDIDATE_DATE_FORMATS = (
 _DATE_START_RE = re.compile(r"^\d{1,2}(?:$|[\s/.\-])|^\d{4}-\d{2}-\d{2}")
 _AMOUNT_RE = re.compile(r"^\(?-?[\d,]*\d(?:\.\d+)?\)?$")
 _SUFFIX_RE = re.compile(r"\s*(CR|DR|Cr|Dr|cr|dr)\.?$")   # no \b: "9,999.99CR" has no word boundary
+# Currency markers printed with amounts: "₹ 1,000.00", "Rs. 50", "INR 10", "$12.00", "12.00 USD" (D-020).
+_CURRENCY_RE = re.compile(r"(?:₹|Rs\.?|INR|USD|US\$|\$)", re.IGNORECASE)
 
 
 class ParseError(ValueError):
@@ -54,6 +56,11 @@ def parse_amount(text, empty_tokens=("", "-")):
     raw = normalize_space(text)
     if raw in empty_tokens:
         return None, None
+    if _CURRENCY_RE.search(raw):
+        raw = normalize_space(_CURRENCY_RE.sub(" ", raw))
+        raw = raw.replace("- ", "-").replace("( ", "(").replace(" )", ")")   # "-₹ 5" -> "-5", "(₹ 5)" -> "(5)"
+        if raw in empty_tokens:
+            return None, None
     suffix = None
     m = _SUFFIX_RE.search(raw)
     if m:

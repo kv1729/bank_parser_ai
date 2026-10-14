@@ -111,8 +111,9 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Real statement re-extracted with current code (extraction #8, 2026-10-07): 76/81 rows start with WDL/DEP TFR, none trailing; validation PASS. Owner compared one row against a direct reading and approved the output.
   - [x] CSV export of stored results (`backend/scripts/export_extraction.py`, runbook §4a).
   - [x] `sample_data/.pdf_password` holds one password per line (2026-10-14): review import, re-extract, privacy gate, sensitive-string refresh, tests and benchmark try each line.
-  - [ ] Second real statement (2 pages, `dd6efc05…`) fails layout inference: first column is `Sr No`, not the date; amounts carry a `₹` prefix. Fix approved by the owner (2026-10-14): find the date column by content, treat serial-number columns, accept currency symbols; earlier layouts must give identical output.
-  - [ ] Third real statement added by the owner (2026-10-14): structure check (counts and heading words only), then extract.
+  - [x] Second real statement (`dd6efc05…`): serial-number first column, `₹` amounts, header on page 1 only, newest-first order. Fixed (D-020): 35/36 rows verified; agent learned `boi/layout-23f4f42a/v1`. Earlier outputs identical (fingerprints).
+  - [x] Third real statement (`171b6c9d…`): serial-number first column, header-only grid, few labels. Extracted, 17/18 rows verified; agent learned `icici/layout-ec27b806/v1` (heading markers, D-020).
+  - [ ] Owner reviews statements 2 and 3 in `/review` (they show as NEEDS_REVIEW: first row unverifiable without an opening balance; some header fields not found).
   - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
@@ -158,6 +159,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [ ] AI template proposer (full statement content allowed: the model runs locally and nothing leaves the machine).
   - [ ] AI fallback extraction: status `LEARNING`, then the self-checked result appears; known layouts stay on the fast path.
   - [ ] Text checks beyond arithmetic (CHECKPOINT B5).
+  - [ ] Agent self-review per statement (what it checked, what it is unsure of, confidence per field), shown in the review screen; the owner gives feedback on the agent's review as well as the output (D-020).
+  - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
   - [ ] Human flags and approvals stored as training examples for the agent.
   - [ ] Evaluation on held-out statements: success rate, time, re-tries.
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
@@ -172,7 +175,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 ## 12. Password vault & intake — Not started
 
 - **Goal:** Statements and their passwords come in one way and are found again automatically.
-- **Deliverables:** Passwords in Windows Credential Manager (`keyring`), keyed by document fingerprint, with a "Remember password" option; per-bank password profiles; one-time import from `sample_data/.pdf_password`; watched `inbox/` folder; BitLocker check.
+- **Deliverables:** Passwords in Windows Credential Manager (`keyring`), keyed by document fingerprint, with a "Remember password" option; per-bank password profiles; one-time import from `sample_data/.pdf_password`; watched `inbox/` folder; BitLocker check; privacy-gate patterns for US identifiers (CHECKPOINT H5).
 
 ## 13. OCR for scanned PDFs — Not started
 
@@ -181,7 +184,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 ## 14. Production hardening — Not started
 
 - **Goal:** Make the app safe to run beyond localhost.
-- **Deliverables:** Authentication; background jobs that survive restarts; deployment (container); monitoring; safe logging.
+- **Deliverables:** Authentication; background jobs that survive restarts; deployment (container); monitoring; safe logging; compliance controls from D-020: retention/deletion policy, audit log, breach-response runbook (CHECKPOINT H2–H4).
 
 ## 15. MCP / agent interface — Not started
 

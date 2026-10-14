@@ -110,6 +110,10 @@ def assemble_rows(pages, spec):
         lines = group_lines(page.words, spec.line_tolerance)
         in_table = not spec.header_on_every_page
         seen_header = False
+        # Layouts that print the column header only once (D-020): on later pages the table
+        # starts lower down, below letterheads and page numbers. Until the first row of a page
+        # starts, lines that do not belong to the table are skipped instead of ending the page.
+        page_row_started = spec.header_on_every_page
         pending = []                # undated lines not yet assigned to a row
         anchor_bottom = None        # bottom of the last line before `pending`
 
@@ -129,13 +133,15 @@ def assemble_rows(pages, spec):
                 if not seen_header:
                     continue
                 in_table = True
-            elif _is_header_line(line, spec) and current is None:
+            elif _is_header_line(line, spec) and (current is None or not page_row_started):
                 anchor_bottom = line.bottom
                 continue
             cells = _assign(line, columns)
             if cells is None:
                 if seen_header and current is None and not rows:
                     continue  # stray text between header and first row
+                if not page_row_started:
+                    continue  # text above the table on a page without a header row
                 break         # footer: table on this page has ended
             date_text = " ".join(cells.get(date_col, ()))
             if not date_text:
@@ -147,6 +153,7 @@ def assemble_rows(pages, spec):
                 flush_pending()            # date wrapped onto a second line: keep filling current row
                 _add_cells(current, cells)
             elif looks_like_date_start(date_text):
+                page_row_started = True
                 to_previous, lead = _split_lead_lines(pending, anchor_bottom, line)
                 pending = to_previous
                 flush_pending()
@@ -156,6 +163,9 @@ def assemble_rows(pages, spec):
                 for _, lead_cells in lead:
                     _add_cells(current, lead_cells)
                 _add_cells(current, cells)
+            elif not page_row_started:
+                pending = []      # text above the table on a page without a header row
+                continue
             else:
                 break      # non-date text in the date column: footer
             anchor_bottom = line.bottom

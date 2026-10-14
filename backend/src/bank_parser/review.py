@@ -103,20 +103,30 @@ class ReviewSources:
         return find_password(pdf_path, read_password_file(source_dir.path / ".pdf_password"))
 
 
-def validate_review(statement, flags, remarks):
-    """Return (flags, remarks) normalised, or raise ReviewError."""
-    if not isinstance(flags, list) or not all(isinstance(k, str) for k in flags):
-        raise ReviewError("flags must be a list of strings")
+def validate_review(statement, flags, remarks, missing=()):
+    """
+    Return (flags, remarks, missing) normalised, or raise ReviewError.
+    flags: outputs that are wrong (header/summary fields, transaction rows).
+    missing: header/summary fields printed on the statement but not extracted.
+    A field marked missing is not also counted as wrong.
+    """
+    for name, keys in (("flags", flags), ("missing", missing)):
+        if not isinstance(keys, (list, tuple)) or not all(isinstance(k, str) for k in keys):
+            raise ReviewError(f"{name} must be a list of strings")
     if not isinstance(remarks, str):
         raise ReviewError("remarks must be a string")
     if len(remarks) > MAX_REMARKS_CHARS:
         raise ReviewError(f"remarks longer than {MAX_REMARKS_CHARS} characters")
     rows = len((statement or {}).get("transactions") or [])
-    allowed = set(HEADER_KEYS) | set(SUMMARY_KEYS)
+    fields_ = set(HEADER_KEYS) | set(SUMMARY_KEYS)
     for k in flags:
-        if k in allowed:
+        if k in fields_:
             continue
         if k.startswith("txn.") and k[4:].isdigit() and int(k[4:]) < rows:
             continue
         raise ReviewError(f"unknown output key {k!r}")
-    return sorted(set(flags)), remarks
+    for k in missing:
+        if k not in fields_:
+            raise ReviewError(f"only header and summary fields can be marked missing, not {k!r}")
+    missing = sorted(set(missing))
+    return sorted(set(flags) - set(missing)), remarks, missing

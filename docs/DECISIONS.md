@@ -387,3 +387,32 @@ For every statement the agent builds, it also writes **its own review**:
 - a confidence per field.
 
 The review screen will show that review beside the output. The owner gives feedback on **both** the extraction and the agent's review (agree/disagree per item, plus remarks). The feedback is stored as training material and drives the autonomy decision in Stage 11.
+
+## D-021 — Account details on new layouts; review marks "missing"
+
+- **Date:** 2026-10-14
+- **Owner report:** on statements 2 and 3 the account details (holder name, address, branch, period) were not extracted, though statement 1 was fine; and saving a review did not seem to work, so there was no way to say "printed but not extracted".
+- **Cause (extraction):**
+  - Header rules were written for the SBI/HDFC labels.
+  - Statement 2 prints "Account holder name:" and an address beside its label, wrapping one line above and below it.
+  - Statement 3 prints the name and address with no labels, a period as "Mon d, yyyy – Mon d, yyyy", and "in INR".
+  - Learned templates copy only the generic rules that matched when they were learned, so better generic rules do not reach an existing template.
+- **Fix (extraction):**
+  - New header rule kind `block`: a labelled value, ended by a wide gap (next column), plus aligned lines above and below whose label column is empty. Measured in label character widths, so it is scale-independent.
+  - Generic fallbacks for holder name/address (block), branch (block, trailing comma dropped), month-name periods, currency from "in INR" or `₹`. They run only when earlier rules left a field empty.
+  - New template versions, saved beside v1 (never overwritten): `boi/layout-23f4f42a/v2` and `icici/layout-ec27b806/v2` (unlabelled name/address/branch address as page regions).
+- **Evidence:**
+  - Header fields filled: statement 2 from 6 to 9; statement 3 from 2 to 9. Transactions and totals identical on both backends.
+  - Statement 1 and the synthetic samples: output fingerprints identical on both backends and both paths.
+  - Values were checked as shape masks only (no content viewed).
+  - Opening/closing balances are not printed on either statement; they are left empty rather than derived.
+- **Cause (review screen):**
+  - The Save bar was positioned below the visible area (`bottom:-80px`), so its "Saved"/"Save failed" message was hidden on long statements.
+  - A save error that was not JSON was swallowed.
+  - A stale timer re-saved the previous statement on every switch.
+  - After a re-extraction, the earlier review was hidden.
+- **Fix (review screen):**
+  - Per field: **OK / Wrong / Missing**. "Missing" is stored separately (`reviews.missing_json`, an additive column) so the golden set (Stage 9) can tell wrong values from absent ones.
+  - The bar is always visible, with clear saved/failed states.
+  - Pending edits are saved before switching statements, with a warning when leaving with unsaved edits.
+  - After a re-extraction, the earlier review is offered with **Copy that review here**.

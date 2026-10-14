@@ -187,8 +187,11 @@ def create_app(settings=None, learning_mode="process"):
         require_document(document_id)
         ex = p.db.latest_extraction(document_id)
         if not ex:
-            return {"extraction_id": None, "review": None}
-        return {"extraction_id": ex["id"], "review": p.db.get_review(document_id, ex["id"])}
+            return {"extraction_id": None, "review": None, "previous": None}
+        review = p.db.get_review(document_id, ex["id"])
+        # A re-extraction starts without a review; show the last one so it is not lost from view.
+        previous = None if review else p.db.previous_review(document_id, ex["id"])
+        return {"extraction_id": ex["id"], "review": review, "previous": previous}
 
     @app.put("/api/documents/{document_id}/review")
     def save_review(document_id: str, body: dict = Body(...)):
@@ -198,10 +201,11 @@ def create_app(settings=None, learning_mode="process"):
         if not ex or ex["document_id"] != document_id:
             raise HTTPException(400, "unknown extraction for this document")
         try:
-            flags, remarks = validate_review(ex["statement"], body.get("flags", []), body.get("remarks", ""))
+            flags, remarks, missing = validate_review(ex["statement"], body.get("flags", []), body.get("remarks", ""),
+                                                      body.get("missing", []))
         except ReviewError as e:
             raise HTTPException(400, str(e))
-        return p.db.save_review(document_id, ex["id"], flags, remarks)
+        return p.db.save_review(document_id, ex["id"], flags, remarks, missing)
 
     return app
 

@@ -56,6 +56,9 @@ class HeaderRule:
     written to targets[i-1].
     kind == "region": lines between `after` and `before` anchors (regexes),
     restricted to words with x in [x_min, x_max]; `lines` = [start, stop) slice.
+    kind == "block": `pattern` matches a label on one line; the value is the text after
+    it up to the next column, plus lines above/below aligned with the value and with the
+    label's column empty (multi-line addresses printed beside their label).
     """
     kind: str
     targets: tuple[str, ...]

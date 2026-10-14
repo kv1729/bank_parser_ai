@@ -89,9 +89,9 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 ### Review page (`/review`)
 1. **Left:** pick a PDF. Files from `sample_data\` are imported and processed on first click; password-protected ones use `sample_data\.pdf_password`, otherwise the page asks for the password (kept in memory only).
 2. **Middle:** scroll the PDF.
-3. **Right:** tick every output that is **wrong**; write observations in **Remarks**. It saves automatically ("Saved …" at the bottom).
+3. **Right:** for each account field choose **OK**, **Wrong**, or **Missing** (printed on the statement but not extracted, or only partly extracted). Tick a transaction row if any of its values is wrong; describe rows the extractor missed in **Remarks**. It saves automatically; the bar at the bottom of the panel always shows **Saved ✓** or **Save failed: …** (then press **Save review** again).
 4. Click a transaction to jump to its page. Amber-edged rows are ones the validator questioned.
-5. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction.
+5. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction; the page shows a note about it with **Copy that review here**.
 
 ## 4a. See the extracted output without the UI
 
@@ -101,7 +101,7 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 | --- | --- |
 | `documents` | One row per PDF: id (SHA-256 of the file), file name, status, page count |
 | `extractions` | One row per extraction run. `statement_json` holds the full output as **JSON** (header, printed totals, every transaction); `report_json` the validation report |
-| `reviews` | Your ticks and remarks, tied to one extraction |
+| `reviews` | Your marks (wrong, missing) and remarks, tied to one extraction |
 
 Each **Re-extract** adds a new extraction; older ones are kept. Extraction numbers are shared by all documents, so the latest for one statement may be #8 even if it has only 6 extractions. The output is JSON *inside* the database, so a spreadsheet needs an export first:
 

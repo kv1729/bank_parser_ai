@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 7 — fix the `Sr No`/`₹` layout gap, then the owner approves the first golden statements. **Next:** Stage 9 (golden regression gate) → Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 7 — owner re-reviews statements 2 and 3 after the account-details fix (D-021), then approves the first golden statements. **Next:** Stage 9 (golden regression gate) → Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -113,7 +113,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] `sample_data/.pdf_password` holds one password per line (2026-10-14): review import, re-extract, privacy gate, sensitive-string refresh, tests and benchmark try each line.
   - [x] Second real statement (`dd6efc05…`): serial-number first column, `₹` amounts, header on page 1 only, newest-first order. Fixed (D-020): 35/36 rows verified; agent learned `boi/layout-23f4f42a/v1`. Earlier outputs identical (fingerprints).
   - [x] Third real statement (`171b6c9d…`): serial-number first column, header-only grid, few labels. Extracted, 17/18 rows verified; agent learned `icici/layout-ec27b806/v1` (heading markers, D-020).
-  - [ ] Owner reviews statements 2 and 3 in `/review` (they show as NEEDS_REVIEW: first row unverifiable without an opening balance; some header fields not found).
+  - [x] Owner's first look at statements 2 and 3 (2026-10-14): account details (name, address, branch, period) were not extracted, and saving a review seemed not to work. Fixed (D-021): labelled-block header rule, month-name periods, currency; templates `boi/layout-23f4f42a/v2` and `icici/layout-ec27b806/v2` (9 header fields each, was 6 and 2; transactions identical). Review screen: per field **OK / Wrong / Missing**, Save bar always visible with a clear saved/failed message, edits kept when switching statements, earlier review offered after re-extraction. Statement 1 and synthetic outputs identical (fingerprints).
+  - [ ] Owner reviews statements 2 and 3 again after **Re-extract** (opening/closing balances are not printed on either, so the first row stays unverifiable).
   - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).

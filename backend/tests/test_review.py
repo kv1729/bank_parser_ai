@@ -81,7 +81,7 @@ def test_review_round_trip_and_validation(client):
     doc_id = _import(client, SBI_PDF.name)
     body = _wait(client, doc_id)
     ex_id = body["extraction"]["id"]
-    assert client.get(f"/api/documents/{doc_id}/review").json() == {"extraction_id": ex_id, "review": None}
+    assert client.get(f"/api/documents/{doc_id}/review").json() == {"extraction_id": ex_id, "review": None, "previous": None}
 
     payload = {"extraction_id": ex_id, "flags": ["header.account_holder_address", "txn.14", "txn.14"],
                "remarks": "Row 15 description looks truncated."}
@@ -96,8 +96,23 @@ def test_review_round_trip_and_validation(client):
     assert src["flagged"] == 0
 
     for bad in ({"extraction_id": ex_id, "flags": ["txn.999"]}, {"extraction_id": ex_id, "flags": ["header.password"]},
-                {"extraction_id": ex_id + 999, "flags": []}, {"extraction_id": ex_id, "flags": "txn.1"}):
+                {"extraction_id": ex_id + 999, "flags": []}, {"extraction_id": ex_id, "flags": "txn.1"},
+                {"extraction_id": ex_id, "missing": ["txn.1"]}, {"extraction_id": ex_id, "missing": "header.ifsc"}):
         assert client.put(f"/api/documents/{doc_id}/review", json=bad).status_code == 400
+
+
+def test_review_marks_fields_missing(client):
+    """Printed on the statement but not extracted (D-021): stored apart from 'wrong', counted in the list."""
+    doc_id = _import(client, SBI_PDF.name)
+    ex_id = _wait(client, doc_id)["extraction"]["id"]
+    saved = client.put(f"/api/documents/{doc_id}/review", json={
+        "extraction_id": ex_id, "flags": ["header.branch", "header.bank_address", "txn.2"],
+        "missing": ["header.bank_address", "summary.total_debits"], "remarks": ""}).json()
+    assert saved["missing"] == ["header.bank_address", "summary.total_debits"]
+    assert saved["flags"] == ["header.branch", "txn.2"]                 # missing wins over wrong for the same field
+    assert client.get(f"/api/documents/{doc_id}/review").json()["review"]["missing"] == saved["missing"]
+    src = next(s for s in client.get("/api/review/sources").json() if s["document_id"] == doc_id)
+    assert src["flagged"] == 4
 
 
 @pytest.mark.skipif(not have_pymupdf(), reason="pymupdf needed to build an encrypted test PDF")
@@ -142,7 +157,10 @@ def test_reprocess_creates_new_extraction_and_keeps_old_review(client):
             break
         time.sleep(0.1)
     assert ex["id"] != first
-    assert client.get(f"/api/documents/{doc_id}/review").json() == {"extraction_id": ex["id"], "review": None}
+    body = client.get(f"/api/documents/{doc_id}/review").json()
+    assert body["extraction_id"] == ex["id"] and body["review"] is None
+    # The earlier review is offered, so it does not seem lost after re-extraction.
+    assert body["previous"]["extraction_id"] == first and body["previous"]["flags"] == ["txn.0"]
 
 
 def test_parallel_page_requests_do_not_crash(client):

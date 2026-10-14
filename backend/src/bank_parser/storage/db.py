@@ -73,6 +73,9 @@ class Database:
         self._local = threading.local()
         with self.connect() as c:
             c.executescript(SCHEMA)
+            # Additive migration (D-021): outputs the reviewer marks as printed but not extracted.
+            if "missing_json" not in {r["name"] for r in c.execute("PRAGMA table_info(reviews)")}:
+                c.execute("ALTER TABLE reviews ADD COLUMN missing_json TEXT NOT NULL DEFAULT '[]'")
 
     @contextmanager
     def connect(self):
@@ -168,27 +171,42 @@ class Database:
         return out
 
     # --- human review -------------------------------------------------------------
-    def save_review(self, doc_id, extraction_id, flags, remarks):
-        """One review per (document, extraction); saving again updates it in place."""
+    def save_review(self, doc_id, extraction_id, flags, remarks, missing=()):
+        """One review per (document, extraction); saving again updates it in place.
+        `flags`: outputs marked wrong; `missing`: outputs printed on the statement but not extracted."""
         now = utcnow()
         with self.connect() as c:
-            c.execute("""INSERT INTO reviews(document_id, extraction_id, flags_json, remarks, created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?)
+            c.execute("""INSERT INTO reviews(document_id, extraction_id, flags_json, missing_json, remarks,
+                                             created_at, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)
                          ON CONFLICT(document_id, extraction_id) DO UPDATE SET
-                           flags_json = excluded.flags_json, remarks = excluded.remarks,
-                           updated_at = excluded.updated_at""",
-                      (doc_id, extraction_id, json.dumps(sorted(set(flags))), remarks, now, now))
+                           flags_json = excluded.flags_json, missing_json = excluded.missing_json,
+                           remarks = excluded.remarks, updated_at = excluded.updated_at""",
+                      (doc_id, extraction_id, json.dumps(sorted(set(flags))), json.dumps(sorted(set(missing))),
+                       remarks, now, now))
         return self.get_review(doc_id, extraction_id)
+
+    @staticmethod
+    def _review_row(row):
+        if not row:
+            return None
+        out = dict(row)
+        out["flags"] = json.loads(out.pop("flags_json"))
+        out["missing"] = json.loads(out.pop("missing_json") or "[]")
+        return out
 
     def get_review(self, doc_id, extraction_id):
         with self.connect() as c:
             row = c.execute("SELECT * FROM reviews WHERE document_id = ? AND extraction_id = ?",
                             (doc_id, extraction_id)).fetchone()
-        if not row:
-            return None
-        out = dict(row)
-        out["flags"] = json.loads(out.pop("flags_json"))
-        return out
+        return self._review_row(row)
+
+    def previous_review(self, doc_id, extraction_id):
+        """The newest review made on an earlier extraction of the document (kept when it is re-extracted)."""
+        with self.connect() as c:
+            row = c.execute("""SELECT * FROM reviews WHERE document_id = ? AND extraction_id < ?
+                               ORDER BY extraction_id DESC LIMIT 1""", (doc_id, extraction_id)).fetchone()
+        return self._review_row(row)
 
     def get_extraction(self, extraction_id):
         with self.connect() as c:
@@ -201,9 +219,10 @@ class Database:
         return out
 
     def review_counts(self):
-        """{document_id: number of flagged outputs} for each document's latest review."""
+        """{document_id: number of outputs marked wrong or missing} for each document's latest review."""
         with self.connect() as c:
-            rows = c.execute("""SELECT document_id, flags_json, updated_at FROM reviews
+            rows = c.execute("""SELECT document_id, flags_json, missing_json, updated_at FROM reviews
                                 ORDER BY updated_at""").fetchall()
-        return {r["document_id"]: len(json.loads(r["flags_json"])) for r in rows}
+        return {r["document_id"]: len(json.loads(r["flags_json"])) + len(json.loads(r["missing_json"] or "[]"))
+                for r in rows}
 

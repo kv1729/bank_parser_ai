@@ -454,5 +454,16 @@ The review screen will show that review beside the output. The owner gives feedb
   - 204 tests pass (180 + 10 skipped without PyMuPDF, as in CI).
   - Fingerprints of all real and synthetic outputs are identical after moving the selection logic.
 - **Owner approval (2026-10-14):** statements 1–3 approved as golden v1. `regress --backends both`: 3 × PASS on the gate backend. pdfplumber differs on statement 3 only: each description's last line moves to the next row, the known line-assignment limitation; it is reported, not gated.
-- **Still open in Stage 9:**
+- **Anonymised layout copies (C6), built 2026-10-14:**
+  - `scripts/anonymise_layout.py` records which word the table engine puts in which row and column, then:
+    - keeps every position and the label vocabulary: a fixed list plus every word the template's markers, column labels and header rules rely on;
+    - replaces every other word with a consistent same-shape fake (IFSC keeps its bank code; e-mails become `@example.com`);
+    - regenerates debits and credits, recomputes balances, opening/closing balances and printed totals;
+    - shifts years by −8.
+  - Numbers of up to 3 digits stay only inside transaction rows, next to a month name or page label, or as printed counts.
+  - **It refuses to write when:** any real word of 3+ characters survives, a header value appears, or the copy's output differs in row count, filled header fields, debit/credit/balance pattern or validation status. The privacy gate also passes on the files.
+  - **Evidence:** 3 copies (SBI 9 pages / 81 rows PASS; BOI 36 rows WARN; ICICI 18 rows WARN); `tests/test_layout_fixtures.py` passes. Disabling the lead-line rule (D-018) makes the SBI and ICICI copies fail at the affected descriptions.
+  - **Templates:** each copy carries its layout's template (labels and geometry only, provenance ids removed). This partly settles the open item on committing real-layout templates.
+  - **Owner approval (2026-10-14):** checked the previews and approved committing both the copies and their templates.
+- **Design as planned before building C6:**
   - **Anonymised layout copies for CI (C6):** word-layout JSON fixtures (positions kept; every non-label token replaced with a fake of the same shape; amounts regenerated so the balance chain holds), served by a test double. The owner checks them before commit; at most 2 experiments per layout (PLAN §6).

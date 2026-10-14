@@ -49,6 +49,7 @@ Interactive diagrams (open in a browser):
 | 8. After learning | If the agent saved a template, the document is re-extracted with it, and future statements of that layout take step 4a. | `pipeline.py` (`_learning_done`) |
 | 9. Review (you) | At http://127.0.0.1:8000/review you pick a PDF and see it page by page next to the extracted output. Mark each field OK, Wrong or Missing (printed but not extracted), tick wrong transaction rows, write remarks; it auto-saves. | `frontend/review.html`, `review.py`, `pdf/render.py` |
 | 10. Golden (you) | When everything is OK, **Approve as golden**: the output is stored as the expected answer. `scripts/regress.py` (also run before every push) and the template agent then refuse any change that alters a golden output. | `golden.py`, `extraction/select.py`, `scripts/regress.py`, `.githooks/pre-push` |
+| 11. Anonymised layout (CI) | Each golden layout gets a copy with real positions and fake values, so the public CI checks the engine on real layouts without real data. | `scripts/anonymise_layout.py`, `pdf/json_layout.py`, `tests/fixtures/layouts/` |
 
 ## 3a. Verifying an extraction yourself (review screen)
 

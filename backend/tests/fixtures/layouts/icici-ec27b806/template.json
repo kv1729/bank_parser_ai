@@ -1,0 +1,192 @@
+{
+  "format": 1,
+  "template_id": "icici/layout-ec27b806/v2",
+  "bank_code": "icici",
+  "bank_name": "ICICI Bank",
+  "layout_id": "layout-ec27b806",
+  "version": 2,
+  "status": "approved",
+  "strategy": "word_columns",
+  "markers": [
+    "Branch",
+    "Transaction Withdrawal Deposit Balance",
+    "No. Cheque Number Transaction Remarks",
+    "Date Amount (INR) Amount (INR) (INR)"
+  ],
+  "table": {
+    "columns": [
+      {
+        "role": "ignore",
+        "x0": 19.0,
+        "x1": 49.0,
+        "label": "s_no"
+      },
+      {
+        "role": "txn_date",
+        "x0": 49.0,
+        "x1": 119.0
+      },
+      {
+        "role": "reference",
+        "x0": 119.0,
+        "x1": 189.0
+      },
+      {
+        "role": "description",
+        "x0": 189.0,
+        "x1": 390.0
+      },
+      {
+        "role": "debit",
+        "x0": 390.0,
+        "x1": 456.0
+      },
+      {
+        "role": "credit",
+        "x0": 456.0,
+        "x1": 522.0
+      },
+      {
+        "role": "balance",
+        "x0": 522.0,
+        "x1": 574.0
+      }
+    ],
+    "date_formats": [
+      "%d.%m.%Y"
+    ],
+    "header_tokens": [
+      "S",
+      "No.",
+      "Transaction",
+      "Date",
+      "Cheque",
+      "Number",
+      "Remarks",
+      "Withdrawal",
+      "Amount",
+      "(INR)",
+      "Deposit",
+      "Balance"
+    ],
+    "min_header_tokens": 2,
+    "header_on_every_page": true,
+    "empty_tokens": [
+      "",
+      "-"
+    ],
+    "line_tolerance": 3.0,
+    "amount_mode": "columns"
+  },
+  "header_rules": [
+    {
+      "kind": "regex",
+      "targets": [
+        "header.account_number"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Account|A/c|Acct)\\.?\\s*(?:Number|No)\\.?\\s*:?\\s*([0-9X*]{6,20})\\b",
+      "flags": "i"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.period_start",
+        "header.period_end"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:from|period)\\s*:?\\s*([A-Za-z]{3,9}\\.?\\s+\\d{1,2},\\s*\\d{4})\\s*(?:to|-)\\s*:?\\s*([A-Za-z]{3,9}\\.?\\s+\\d{1,2},\\s*\\d{4})",
+      "flags": "i",
+      "date_formats": [
+        "%b %d, %Y",
+        "%B %d, %Y",
+        "%b. %d, %Y"
+      ]
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.currency"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "\\bin\\s+(INR|USD)\\b"
+    },
+    {
+      "kind": "block",
+      "targets": [
+        "header.branch"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "\\bBranch(?:\\s+Name)?\\s*:",
+      "flags": "i"
+    },
+    {
+      "kind": "region",
+      "targets": [
+        "header.account_holder_name"
+      ],
+      "pages": [
+        1
+      ],
+      "after": "^Statement of Transactions\\b",
+      "before": "^Transaction\\s+Withdrawal\\b",
+      "x_max": 390.0,
+      "lines": [
+        0,
+        1
+      ]
+    },
+    {
+      "kind": "region",
+      "targets": [
+        "header.account_holder_address"
+      ],
+      "pages": [
+        1
+      ],
+      "after": "^Statement of Transactions\\b",
+      "before": "^Transaction\\s+Withdrawal\\b",
+      "x_max": 390.0,
+      "strip": ",\\s*$",
+      "lines": [
+        1,
+        null
+      ]
+    },
+    {
+      "kind": "region",
+      "targets": [
+        "header.bank_address"
+      ],
+      "pages": [
+        1
+      ],
+      "after": "^Statement of Transactions\\b",
+      "before": "^Transaction\\s+Withdrawal\\b",
+      "x_min": 395.0,
+      "strip": ",\\s*$",
+      "lines": [
+        1,
+        null
+      ]
+    }
+  ],
+  "required_checks": [
+    "balance_chain"
+  ],
+  "provenance": {
+    "created_by": "anonymised fixture",
+    "copied_from": "icici/layout-ec27b806/v2"
+  },
+  "regression": {}
+}

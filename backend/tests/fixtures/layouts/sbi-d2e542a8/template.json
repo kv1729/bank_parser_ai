@@ -1,0 +1,194 @@
+{
+  "format": 1,
+  "template_id": "sbi/layout-d2e542a8/v3",
+  "bank_code": "sbi",
+  "bank_name": "State Bank of India",
+  "layout_id": "layout-d2e542a8",
+  "version": 3,
+  "status": "approved",
+  "strategy": "word_columns",
+  "markers": [
+    "Branch Code",
+    "Branch Name",
+    "Date of Statement",
+    "Branch Email ID",
+    "Branch Phone",
+    "CIF Number"
+  ],
+  "table": {
+    "columns": [
+      {
+        "role": "txn_date",
+        "x0": 20.0,
+        "x1": 75.0
+      },
+      {
+        "role": "value_date",
+        "x0": 75.0,
+        "x1": 130.0
+      },
+      {
+        "role": "description",
+        "x0": 130.0,
+        "x1": 280.0
+      },
+      {
+        "role": "ignore",
+        "x0": 280.0,
+        "x1": 331.09,
+        "label": "column_3"
+      },
+      {
+        "role": "debit",
+        "x0": 331.09,
+        "x1": 410.0
+      },
+      {
+        "role": "credit",
+        "x0": 410.0,
+        "x1": 490.0
+      },
+      {
+        "role": "balance",
+        "x0": 490.0,
+        "x1": 575.0
+      }
+    ],
+    "date_formats": [
+      "%d/%m/%Y"
+    ],
+    "header_tokens": [
+      "Balance"
+    ],
+    "min_header_tokens": 1,
+    "header_on_every_page": true,
+    "empty_tokens": [
+      "",
+      "-"
+    ],
+    "line_tolerance": 3.0,
+    "amount_mode": "columns"
+  },
+  "header_rules": [
+    {
+      "kind": "regex",
+      "targets": [
+        "header.account_number"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Account|A/c|Acct)\\.?\\s*(?:Number|No)\\.?\\s*:?\\s*([0-9X*]{6,20})\\b",
+      "flags": "i"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.ifsc"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?i:\\bIFS(?:C)?(?:\\s*Code)?)\\s*:?\\s*([A-Z]{4}0[A-Z0-9]{6})\\b"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.period_start",
+        "header.period_end"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Statement\\s+)?(?:from|period)\\s*:?\\s*(\\d{1,2}[-/ .](?:\\d{1,2}|[A-Za-z]{3,9})[-/ .]\\d{2,4})\\s*(?:to|-)\\s*:?\\s*(\\d{1,2}[-/ .](?:\\d{1,2}|[A-Za-z]{3,9})[-/ .]\\d{2,4})",
+      "flags": "i"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.account_holder_name"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "^((?:Mr|Mrs|Ms|Miss|Dr|M/s)\\.?[ \\t]+[A-Za-z][A-Za-z.' \\t]*?)(?=[ \\t]+(?:[A-Za-z]+[ \\t]+){0,2}[A-Za-z]+[ \\t]*:|[ \\t]*$)",
+      "flags": "im"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.account_holder_address"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:My|Customer|Communication|Mailing)\\s+Address\\s*:\\s*(.+?)\\s*$",
+      "flags": "im"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.branch"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Branch[ \\t]+Name|Home[ \\t]+Branch|Account[ \\t]+Branch|Branch)[ \\t]*:[ \\t]*([A-Z][A-Za-z0-9 .&-]*?)[ \\t]*(?=[ \\t][A-Z][A-Za-z.]*(?:[ \\t][A-Za-z.]+)*[ \\t]*:|$)",
+      "flags": "m"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.currency"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "\\bCurrency\\s*:\\s*([A-Z]{3})\\b"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.opening_balance",
+        "summary.debit_count",
+        "summary.credit_count",
+        "summary.total_debits",
+        "summary.total_credits",
+        "header.closing_balance"
+      ],
+      "pages": [
+        -1
+      ],
+      "pattern": "Brought\\s+Forward.*?Closing\\s+Balance[^\\n]*\\n\\s*(-?[\\d,]+\\.\\d{2}(?:\\s?(?:CR|DR|Cr|Dr))?)\\s+(\\d+)\\s+(\\d+)\\s+(-?[\\d,]+\\.\\d{2}(?:\\s?(?:CR|DR|Cr|Dr))?)\\s+(-?[\\d,]+\\.\\d{2}(?:\\s?(?:CR|DR|Cr|Dr))?)\\s+(-?[\\d,]+\\.\\d{2}(?:\\s?(?:CR|DR|Cr|Dr))?)",
+      "flags": "is"
+    },
+    {
+      "kind": "region",
+      "targets": [
+        "header.bank_address"
+      ],
+      "pages": [
+        1
+      ],
+      "after": "Phone\\s+Number",
+      "before": "^Please do not share",
+      "x_min": 425.0,
+      "join": " "
+    }
+  ],
+  "required_checks": [
+    "balance_chain",
+    "reconciliation"
+  ],
+  "provenance": {
+    "created_by": "anonymised fixture",
+    "copied_from": "sbi/layout-d2e542a8/v3"
+  },
+  "regression": {}
+}

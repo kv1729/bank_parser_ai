@@ -151,6 +151,14 @@ The output panel then shows **Golden v1 · approved … IST**. If a later extrac
 | `uv run python scripts/regress.py --show-values` | The same, with the actual values instead of masks (`Aaaa 99`) |
 | `uv run python scripts/regress.py --backends both` | Also runs the second PDF engine (reported only) |
 
+**After approving a statement with a new layout**, make an anonymised copy of it for CI (from `backend\`):
+
+```powershell
+uv run python scripts/anonymise_layout.py --doc <first 8 characters of the document id> --name <bank>-<layout id>
+```
+
+It prints only checks and counts, and refuses if any real word would survive. Look at the preview pictures it lists (`data\exports\layout-preview\<name>\page-N.png`) before committing `backend\tests\fixtures\layouts\<name>\`.
+
 It also runs automatically before every `git push` (`.githooks/pre-push`). A failing check blocks the push. Don't bypass it with `--no-verify`; re-approve in `/review` if the change is intended. Reports are saved in `data\regress\`.
 
 ## 6. Tests and timings (optional)

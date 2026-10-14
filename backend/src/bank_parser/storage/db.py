@@ -60,6 +60,25 @@ CREATE TABLE IF NOT EXISTS reviews (
     updated_at    TEXT NOT NULL,
     UNIQUE (document_id, extraction_id)
 );
+-- Golden statements (Stage 9, D-022): approved output snapshots. Append-only:
+-- re-approval adds a version; nothing is updated in place except retiring.
+CREATE TABLE IF NOT EXISTS golden_snapshots (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id       TEXT NOT NULL REFERENCES documents(id),
+    version           INTEGER NOT NULL,
+    extraction_id     INTEGER NOT NULL REFERENCES extractions(id),
+    snapshot_json     TEXT NOT NULL,            -- statement without provenance
+    workflow          TEXT NOT NULL,            -- known_template | unknown_layout
+    template_id       TEXT,
+    backend           TEXT NOT NULL,
+    engine_commit     TEXT,
+    validation_status TEXT NOT NULL,
+    warnings_json     TEXT NOT NULL,            -- warning codes the owner acknowledged
+    password_source   TEXT NOT NULL,            -- none | password_file (the password is never stored)
+    status            TEXT NOT NULL DEFAULT 'active',
+    approved_at       TEXT NOT NULL,
+    UNIQUE (document_id, version)
+);
 """
 
 
@@ -217,6 +236,57 @@ class Database:
         for k in ("report_json", "statement_json", "problems_json", "timings_json"):
             out[k[:-5]] = json.loads(out.pop(k)) if out[k] else None
         return out
+
+    # --- golden statements ----------------------------------------------------------
+    def add_golden(self, doc_id, extraction_id, snapshot, workflow, template_id, backend, engine_commit,
+                   validation_status, warnings, password_source):
+        """Store a new golden version for the document (never replaces an older one)."""
+        with self.connect() as c:
+            c.execute("BEGIN IMMEDIATE")
+            try:
+                version = c.execute("SELECT COALESCE(MAX(version), 0) + 1 FROM golden_snapshots WHERE document_id = ?",
+                                    (doc_id,)).fetchone()[0]
+                c.execute("""INSERT INTO golden_snapshots(document_id, version, extraction_id, snapshot_json, workflow,
+                               template_id, backend, engine_commit, validation_status, warnings_json, password_source,
+                               approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                          (doc_id, version, extraction_id, json.dumps(snapshot, sort_keys=True), workflow, template_id,
+                           backend, engine_commit, validation_status, json.dumps(sorted(set(warnings))),
+                           password_source, utcnow()))
+                c.execute("COMMIT")
+            except BaseException:
+                c.execute("ROLLBACK")
+                raise
+        return self.golden_for(doc_id)
+
+    @staticmethod
+    def _golden_row(row):
+        if not row:
+            return None
+        out = dict(row)
+        out["snapshot"] = json.loads(out.pop("snapshot_json"))
+        out["warnings"] = json.loads(out.pop("warnings_json"))
+        return out
+
+    def golden_for(self, doc_id):
+        """The document's active golden snapshot (newest version), or None."""
+        with self.connect() as c:
+            row = c.execute("""SELECT * FROM golden_snapshots WHERE document_id = ? AND status = 'active'
+                               ORDER BY version DESC LIMIT 1""", (doc_id,)).fetchone()
+        return self._golden_row(row)
+
+    def active_goldens(self):
+        """The active (newest) golden snapshot of every golden document."""
+        with self.connect() as c:
+            rows = c.execute("""SELECT g.* FROM golden_snapshots g
+                                WHERE g.status = 'active' AND g.version = (
+                                    SELECT MAX(version) FROM golden_snapshots
+                                    WHERE document_id = g.document_id AND status = 'active')
+                                ORDER BY g.document_id""").fetchall()
+        return [self._golden_row(r) for r in rows]
+
+    def golden_versions(self):
+        """{document_id: active golden version} for the review list."""
+        return {g["document_id"]: g["version"] for g in self.active_goldens()}
 
     def review_counts(self):
         """{document_id: number of outputs marked wrong or missing} for each document's latest review."""

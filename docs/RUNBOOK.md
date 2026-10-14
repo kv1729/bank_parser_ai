@@ -102,6 +102,7 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 | `documents` | One row per PDF: id (SHA-256 of the file), file name, status, page count |
 | `extractions` | One row per extraction run. `statement_json` holds the full output as **JSON** (header, printed totals, every transaction); `report_json` the validation report |
 | `reviews` | Your marks (wrong, missing) and remarks, tied to one extraction |
+| `golden_snapshots` | Approved (golden) outputs, one version per approval; older versions kept |
 
 Each **Re-extract** adds a new extraction; older ones are kept. Extraction numbers are shared by all documents, so the latest for one statement may be #8 even if it has only 6 extractions. The output is JSON *inside* the database, so a spreadsheet needs an export first:
 
@@ -130,6 +131,27 @@ Double-click the CSV to open it in Excel. The database is opened read-only, so t
 ## 5. Stop the app
 
 Press **Ctrl+C** in the server window (or close the window). Check: http://127.0.0.1:8000 no longer loads.
+
+## 5a. Golden statements and the regression check (Stage 9)
+
+A **golden** statement is one you checked completely and approved. From then on, every code or template change must reproduce its output exactly.
+
+**Approve one** (in `/review`):
+1. Re-extract it with the current code, check every field against the PDF, and set everything to **OK** (no Wrong, no Missing). Save.
+2. Click **Approve as golden** (bottom bar). If validation has warnings (for example "no opening balance is printed"), the page lists them and asks you to confirm.
+3. If the PDF is encrypted, its password must be a line in `sample_data\.pdf_password`, so the statement can be re-checked later. The password itself is never stored.
+
+The output panel then shows **Golden v1 · approved … IST**. If a later extraction differs, the panel lists every differing field. If the new output is right, check it and click **Approve again** (v2; v1 is kept).
+
+**Run the check yourself** (from `backend\`):
+
+| Command | What it does |
+| --- | --- |
+| `uv run python scripts/regress.py` | Re-extracts every golden statement and compares field by field. `PASS` or `DIFF` with the field names; exit code 1 on any difference |
+| `uv run python scripts/regress.py --show-values` | The same, with the actual values instead of masks (`Aaaa 99`) |
+| `uv run python scripts/regress.py --backends both` | Also runs the second PDF engine (reported only) |
+
+It also runs automatically before every `git push` (`.githooks/pre-push`). A failing check blocks the push. Don't bypass it with `--no-verify`; re-approve in `/review` if the change is intended. Reports are saved in `data\regress\`.
 
 ## 6. Tests and timings (optional)
 

@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 7 — owner re-checks statement 2 (extraction #20, all account fields now extracted) and marks it OK; statements 1–3 then reach zero marks. **Next:** Stage 9 (golden regression gate), proposed to run alongside the rest of Stage 7 (collecting more statements) — needs owner approval. Then Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 9 (approved 2026-10-14 to run alongside the rest of Stage 7) — golden store, approval, `regress` and both gates are built; the owner approves statements 1–3 as golden in `/review`. Then: anonymised layout copies for CI (C6). Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
 | 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
-| 9 | Golden set & non-regression gate | Not started | — | — |
+| 9 | Golden set & non-regression gate | In progress (alongside 7, approved) | 2026-10-14 | — |
 | 10 | Local AI agent (open-source model), trained with human review | Not started | — | — |
 | 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
 | 12 | Password vault & intake | Not started | — | — |
@@ -142,19 +142,20 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Layouts with neither ruled cells nor heading text → Stage 10 (agent; Docling as a candidate).
   - Single parsing pass; cross-backend check on every new statement → Stage 9 (part of the regression run).
 
-## 9. Golden set & non-regression gate — Not started
+## 9. Golden set & non-regression gate — In progress
 
 - **Goal:** Nothing that worked before can break: every engine or template change is checked against every approved statement.
 - **Deliverables:**
-  - [ ] Golden store (local, private): PDF fingerprint, approved output snapshot, engine and template version, password reference.
-  - [ ] "Approve as golden" in the review screen (only with zero flags and verified arithmetic); human approval for now (D-019).
-  - [ ] `regress` command: re-extract every golden statement and compare field by field; readable diff.
-  - [ ] Gate in front of template saving (agent) and engine changes (pre-push hook for private statements; CI for synthetic ones).
-  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI.
+  - [x] Golden store (local, private; D-022): table `golden_snapshots` in `data/bank_parser.db`, append-only versions with the approved output, workflow, template, backend, engine commit, acknowledged warnings and password source (never the password).
+  - [x] "Approve as golden" in `/review`: only the latest extraction, with a saved review that has 0 wrong and 0 missing, no failed validation (warnings must be confirmed), a PDF that can be reopened (unencrypted, or a line of `sample_data/.pdf_password`), and output the current code reproduces. Re-approval adds a version. Golden badge and field-by-field differences on screen.
+  - [x] `regress` command (`backend/scripts/regress.py`): re-extracts every golden statement exactly as the app does (shared `extraction/select.py`) and compares field by field, plus the extraction path (a template that stops working is caught even when the fallback output matches). Masked values by default; `--show-values`; `--backends both`. Report in `data/regress/`.
+  - [x] Gates: the template agent cannot save a template that changes any golden output (`golden_gate`); `.githooks/pre-push` runs `regress` before every push (skips where no golden set exists). Synthetic samples stay covered by CI tests.
+  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI: word-layout JSON fixtures, owner checks them before commit (plan in D-022).
 - **Exit criteria:**
   - Changing one field of the engine output makes `regress` fail on the right statement and field.
   - The agent cannot save a template that changes any golden output.
   - The 3 real statements are golden.
+- **Evidence so far:** `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor.
 
 ## 10. Local AI agent (open-source model), trained with human review — Not started
 

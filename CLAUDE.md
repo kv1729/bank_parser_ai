@@ -22,7 +22,7 @@
   - Run `/code-review` before merging.
 - **End of session:** update `STAGES.md` (and `docs/PROJECT_GUIDE.md` if a component or tool changed), then commit on the stage branch.
 - **New clone:**
-  - `git config core.hooksPath .githooks` turns on the privacy gate.
+  - `git config core.hooksPath .githooks` turns on the privacy gate and the pre-push golden regression check.
   - `cd backend && uv sync && uv run python scripts/refresh_sensitive_strings.py` builds the local list of identifiers to block.
 
 ## Layout
@@ -49,6 +49,7 @@
 - **Tests:** `uv run pytest`
 - **App:** `uv run uvicorn bank_parser.api.main:app --host 127.0.0.1 --port 8000` (`/` upload, `/review` owner verification). The owner starts it with `start-app.cmd` at the repository root (see `docs/RUNBOOK.md`); never from the root with plain `uv run` — the old root `.venv` breaks it.
 - **Benchmark:** `uv run python scripts/benchmark.py`
+- **Golden regression check:** `uv run python scripts/regress.py` (masked output; `--show-values`, `--backends both`). Runs before every push.
 - **Export output to CSV:** `uv run python scripts/export_extraction.py --list` / `--doc <id-prefix>` (read-only; writes `data/exports/`)
 - **Diagrams** (archify skill), from the repository root:
   1. Edit `docs/diagrams/<name>/candidate.json`.
@@ -65,6 +66,7 @@
 - Extraction never waits for template learning (`backend/tests/test_pipeline.py` enforces this).
 - Validators report malformed data as `FAIL`; they never raise and never skip silently.
 - Templates are data, versioned per layout. Never edit or overwrite an existing version: save a new one.
+- Golden statements (D-022): no engine or template change may alter a golden output. Run `regress` after any such change; a difference is accepted only by the owner re-approving in `/review`, never by editing snapshots.
 - Layout detection uses label markers and geometry, not header text alone.
 - Default PDF backend is pypdfium2 (D-015). Any backend change must keep `test_pypdfium2_output_identical_to_pdfplumber`-style equivalence: identical statements, not just passing validation.
 - No application size cap. Protect resources with streaming, page-at-a-time parsing and bounded pools.

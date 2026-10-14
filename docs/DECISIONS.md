@@ -431,3 +431,28 @@ The review screen will show that review beside the output. The owner gives feedb
 - **Correction:** a labelled block is one wrapped table cell, so its lines are now joined with spaces (a locality name split across two lines stays one name), not commas the bank did not print. Saved as template `boi/layout-23f4f42a/v3`; v1 and v2 kept. Only statement 2's output changed (fingerprints).
 - **IST:** the review screen shows save times in India Standard Time; the database keeps UTC.
 - **Data access:** the owner allowed Claude to view real statement content for training and debugging. Recorded as an exception in the owner's global rules: this project only, only what a task needs, never committed, logged or sent anywhere.
+
+## D-022 — Golden statements and the non-regression gate (Stage 9)
+
+- **Date:** 2026-10-14
+- **Owner:** approved starting Stage 9 alongside the rest of Stage 7.
+- **Problem:** nothing stopped a change from silently breaking a statement that worked. The agent checked only that a new template's markers do not take over another layout, and CI covered only the synthetic samples.
+- **Decision:**
+  - **Golden store:** a golden statement is an owner-approved extraction, stored as an append-only snapshot (`golden_snapshots`, local DB). Re-approval adds a version.
+  - **Approval rules:**
+    1. The latest extraction.
+    2. A saved review with 0 wrong and 0 missing.
+    3. No failed validation; warnings must be confirmed.
+    4. The PDF can be reopened later: unencrypted, or with a line of `sample_data/.pdf_password`. The password is never stored; a vault comes in Stage 12.
+    5. The current code reproduces the reviewed output.
+  - **One extraction path:** `extraction/select.py` decides which template extracts a document. The app, `regress` and the agent gate all use it, so they cannot disagree.
+  - **What `regress` compares:** every field (header, totals, each transaction field, row count) and the extraction path. A known layout that falls back to the unknown-layout path is a regression even if the output matches. A test found exactly that case: a wrong amount failed the template's balance check, and the fallback reproduced the old output. A newer template version with identical output is allowed and shown.
+  - **Gates:** the template agent runs the regression with its candidate added before saving, and refuses on any golden difference. `.githooks/pre-push` runs `regress` before every push. Accepting a difference is human-only, by re-approving in `/review` (D-019).
+  - **Privacy:** printed output is shape-masked by default (`--show-values` to see values); reports go to `data/regress/` (gitignored).
+- **Evidence:**
+  - `tests/test_golden.py`: one changed description is reported at exactly `transactions[5].description` and the other golden stays PASS; the template fallback is caught; the agent gate refuses a hijacking candidate and `registry.save` is never called.
+  - 204 tests pass (180 + 10 skipped without PyMuPDF, as in CI).
+  - Fingerprints of all real and synthetic outputs are identical after moving the selection logic.
+- **Still open in Stage 9:**
+  - The owner approves statements 1–3.
+  - **Anonymised layout copies for CI (C6):** word-layout JSON fixtures (positions kept; every non-label token replaced with a fake of the same shape; amounts regenerated so the balance chain holds), served by a test double. The owner checks them before commit; at most 2 experiments per layout (PLAN §6).

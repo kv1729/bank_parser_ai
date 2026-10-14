@@ -43,6 +43,11 @@
   select.state { font:inherit; font-size:12px; padding:1px 2px; border:1px solid var(--line); border-radius:4px; background:var(--card); color:inherit; }
   .notice { margin:10px 0; padding:8px 10px; border:1px solid var(--line); border-left:3px solid var(--warn); border-radius:6px; }
   .notice button { margin-left:8px; }
+  .golden { margin:10px 0; padding:8px 10px; border:1px solid var(--line); border-left:3px solid var(--ok); border-radius:6px; }
+  .golden.differs { border-left-color:var(--bad); }
+  .golden ul { margin:6px 0 0; padding-left:18px; max-height:180px; overflow:auto; font-size:12px; }
+  button.secondary { padding:6px 12px; border:1px solid var(--ok); border-radius:6px; background:none; color:var(--ok); cursor:pointer; }
+  button.secondary:disabled { opacity:.5; cursor:default; }
   #save-state.ok { color:var(--ok); } #save-state.bad { color:var(--bad); font-weight:600; }
   tr.issue td:not(.cb) { box-shadow: inset 3px 0 0 var(--warn); }
   tr.txn { cursor:pointer; }
@@ -118,6 +123,7 @@ async function loadSources(activeDocId) {
     meta.append(s.imported ? pill(s.status) : el("span", "not imported"));
     if (s.page_count) meta.append(el("span", ` · ${s.page_count} p`));
     if (s.flagged != null) meta.append(el("span", ` · ${s.flagged} flagged`));
+    if (s.golden_version != null) meta.append(el("span", ` · golden v${s.golden_version}`, "PASS"));
     b.append(meta);
     b.onclick = () => select(s);
     box.append(b);
@@ -198,6 +204,7 @@ function unlockForm(doc) {
 async function renderOutput(doc, ex, token) {
   const st = ex.statement || {}; const h = st.header || {}; const sm = st.summary || {};
   const saved = (await (await fetch(`/api/documents/${doc.id}/review`)).json());
+  const gold = await (await fetch(`/api/documents/${doc.id}/golden`)).json();
   if (token !== showToken) return;
   if (current && current.docId !== doc.id) await flushSave();
   const review = saved.extraction_id === ex.id ? saved.review : null;
@@ -235,6 +242,8 @@ async function renderOutput(doc, ex, token) {
     box.append(copy); out.append(box);
   }
 
+  out.append(goldenBox(gold, ex));
+
   out.append(el("h2", "Account & statement"));
   const MONEY = new Set(["opening_balance", "closing_balance", "total_debits", "total_credits"]);
   out.append(fieldTable(HEADER_FIELDS.map(([k, label]) => ["header." + k, label, MONEY.has(k) ? inr(h[k]) : h[k]])));
@@ -270,6 +279,8 @@ async function renderOutput(doc, ex, token) {
   const btn = el("button", "Save review", "primary"); btn.id = "save-btn"; btn.onclick = () => save();
   bar.append(btn, el("span", "", "muted")); bar.lastChild.id = "save-state";
   bar.append(el("span", "", "muted")); bar.lastChild.id = "flag-count";
+  bar.append(el("span", null, "spacer")); bar.lastChild.style.flex = "1";
+  bar.append(approveButton(doc, ex, gold, token));
   out.append(bar);
   updateCounts(review ? "Saved ✓ " + ist(review.updated_at) : "Not saved yet", review ? "ok" : "");
 }
@@ -283,6 +294,55 @@ async function reextract(docId, oldExtractionId, token) {
     if (["FAILED", "NEEDS_PASSWORD", "NEEDS_OCR"].includes(b.document.status)) break;
   }
   if (token === showToken) show(docId);
+}
+
+// --- golden statements (Stage 9) ------------------------------------------------------------
+const WARNING_TEXT = { no_opening_balance: "no opening balance is printed, so the first row's balance cannot be checked",
+                       balance_missing: "a row has no printed balance", missing_header_field: "an account field was not found",
+                       no_running_balance: "the statement prints no running balance", date_out_of_order: "dates are not in order",
+                       date_outside_period: "a date lies outside the statement period" };
+
+function goldenBox(gold, ex) {
+  const g = gold.golden;
+  if (!g) return el("div", "Not golden yet. When every field is OK and saved, approve it as golden: from then on any change to its output is caught.", "muted");
+  const changes = gold.differs || [];
+  const box = el("div", null, "golden" + (changes.length ? " differs" : ""));
+  box.append(el("strong", `Golden v${g.version}`), el("span", ` · approved ${ist(g.approved_at)} · extraction #${g.extraction_id}${g.template_id ? " · " + g.template_id : ""}`, "muted"));
+  if (changes.length) {
+    box.append(el("div", `This extraction differs from the golden output in ${changes.length} field(s). If the new output is right, check it and approve again (v${g.version + 1}); v${g.version} is kept.`));
+    const ul = el("ul");
+    for (const c of changes.slice(0, 50)) ul.append(el("li", `${c.path}: ${c.old ?? "—"} → ${c.new ?? "—"}`));
+    box.append(ul);
+  } else box.append(el("div", "This extraction matches the golden output exactly.", "muted"));
+  return box;
+}
+
+function approveButton(doc, ex, gold, token) {
+  const g = gold.golden, same = g && !(gold.differs || []).length;
+  const btn = el("button", same ? "Golden ✓" : g ? `Approve again as golden v${g.version + 1}` : "Approve as golden", "secondary");
+  btn.disabled = same;
+  btn.title = "Only when every field is OK and the review is saved. The output is then protected by the regression gate.";
+  btn.onclick = async () => {
+    await flushSave();
+    const post = ack => fetch(`/api/documents/${doc.id}/golden`, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                                   body: JSON.stringify({ extraction_id: ex.id, acknowledge_warnings: ack }) });
+    btn.disabled = true; const label = btn.textContent; btn.textContent = "Checking…";
+    try {
+      let r = await post(false), body = await r.json().catch(() => null);
+      const d = body && body.detail;
+      if (r.status === 409 && d && d.code === "warnings") {
+        const list = d.warnings.map(w => "• " + (WARNING_TEXT[w] || w)).join("\n");
+        if (!confirm(`Validation has ${d.warnings.length} warning(s):\n${list}\n\nApprove anyway? Only if you checked these against the PDF.`)) { btn.textContent = label; btn.disabled = false; return; }
+        r = await post(true); body = await r.json().catch(() => null);
+      }
+      if (!r.ok) throw new Error((body && body.detail && (body.detail.message || body.detail)) || `the server answered ${r.status}`);
+      if (token === showToken) show(doc.id);
+    } catch (e) {
+      btn.textContent = label; btn.disabled = false;
+      updateCounts("Not approved: " + e.message, "bad");
+    }
+  };
+  return btn;
 }
 
 function fieldTable(rows) {

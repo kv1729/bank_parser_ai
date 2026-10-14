@@ -5,7 +5,7 @@ Its job is not to parse this document -- Workflow 1 already did that -- but
 to leave behind a reusable, deterministic template so the next statement of
 this layout takes the fast known-template path.
 
-Bounded loop:  propose -> extract -> validate -> regression -> save | refine
+Bounded loop:  propose -> extract -> validate -> regression -> golden gate -> save | refine
 Limits: candidates, refinements, wall-clock time and (future) LLM tokens.
 Outcome: ACCEPTED (template saved as a new version), or HUMAN_REVIEW with
 reasons. It never overwrites a template (DECISIONS.md D-009, D-011).
@@ -98,8 +98,11 @@ def _accept(template, result, report):
 
 class TemplateAgent:
     def __init__(self, registry, regression_docs=(), budget=LearningBudget(), backend="pypdfium2",
-                 proposers=None, detection_texts=None):
+                 proposers=None, detection_texts=None, golden_check=None):
         self.registry = registry
+        # golden_check(templates) -> (ok, reason): no template may be saved that changes the
+        # output of any golden statement (Stage 9, D-022). See bank_parser.golden.golden_gate.
+        self.golden_check = golden_check
         self.regression_docs = list(regression_docs)
         self.budget = budget
         self.backend = backend
@@ -159,6 +162,9 @@ class TemplateAgent:
                         ok, feedback, why = _accept(candidate, result, report)
                         if ok:
                             ok, feedback, why = self._regression(candidate, own_text)
+                        if ok and self.golden_check is not None:
+                            ok, golden_why = self.golden_check(self.registry.all() + [candidate])
+                            why, feedback = (f"{why}; {golden_why}", "") if ok else (golden_why, "golden_changed")
                         attempts.append({"proposer": proposer.name, "layout": candidate.layout_id,
                                          "columns": [c.role for c in candidate.table.columns],
                                          "markers": len(candidate.markers), "rows": len(result.statement.transactions),

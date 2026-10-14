@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-14 (after the owner's second review, D-021). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-14 (Stage 9 core built, D-022). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -16,13 +16,13 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 |---|---|---|---|
 | A. Extraction core | 8 | 9 | 🟡 |
 | B. Self-check of each extraction | 4 | 6 | 🟡 |
-| C. Regression safety (golden set) | 1 | 6 | ⬜ |
+| C. Regression safety (golden set) | 5 | 6 | 🟡 |
 | D. AI agent (learning new layouts) | 2 | 9 | ⬜ |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **21** | **53** | **40%** |
+| **Total** | **25** | **53** | **47%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -56,10 +56,10 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | # | Capability | Status | Evidence / where | Stage |
 |---|---|---|---|---|
 | C1 | Synthetic samples tested on every push (CI) | ✅ | 175 tests, `.github/workflows/ci.yml` | 6 |
-| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ⬜ | | 9 |
-| C3 | "Approve as golden" in the review screen | ⬜ | | 9 |
-| C4 | `regress` command: re-extract every golden statement and compare field by field | ⬜ | | 9 |
-| C5 | Gate: no template saved and no engine change accepted unless C4 is identical, or the diff is re-approved | ⬜ | | 9 |
+| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ✅ | `golden_snapshots` table, D-022 (owner still to approve statements 1–3) | 9 |
+| C3 | "Approve as golden" in the review screen | ✅ | 5 approval rules, `tests/test_golden.py` | 9 |
+| C4 | `regress` command: re-extract every golden statement and compare field by field | ✅ | `scripts/regress.py`; one changed field is reported at exactly that field | 9 |
+| C5 | Gate: no template saved and no engine change accepted unless C4 is identical, or the diff is re-approved | ✅ | agent `golden_gate`; `.githooks/pre-push` | 9 |
 | C6 | Anonymised copies of each golden layout (same geometry, fake values) so CI protects it publicly | ⬜ | | 9 |
 
 ## D. AI agent: learning new layouts

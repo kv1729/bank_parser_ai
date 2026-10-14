@@ -48,6 +48,7 @@ Interactive diagrams (open in a browser):
 | 7. Show | The web page polls for status and shows the header, checks and transactions. | `frontend/index.html` |
 | 8. After learning | If the agent saved a template, the document is re-extracted with it, and future statements of that layout take step 4a. | `pipeline.py` (`_learning_done`) |
 | 9. Review (you) | At http://127.0.0.1:8000/review you pick a PDF and see it page by page next to the extracted output. Mark each field OK, Wrong or Missing (printed but not extracted), tick wrong transaction rows, write remarks; it auto-saves. | `frontend/review.html`, `review.py`, `pdf/render.py` |
+| 10. Golden (you) | When everything is OK, **Approve as golden**: the output is stored as the expected answer. `scripts/regress.py` (also run before every push) and the template agent then refuse any change that alters a golden output. | `golden.py`, `extraction/select.py`, `scripts/regress.py`, `.githooks/pre-push` |
 
 ## 3a. Verifying an extraction yourself (review screen)
 
@@ -76,7 +77,7 @@ Your reviews stay in `data/bank_parser.db` (gitignored) and become the hand-chec
 | `backend/src/bank_parser/core/` | The domain: output format (`schema.py`: `Statement`, `Transaction`, `Decimal` money) and all checks (`validation.py`). No file or network access. |
 | `…/pdf/` | Opens PDFs and returns words with positions. Two interchangeable backends; classification and passwords. |
 | `…/templates/` | What a template is (`model.py`) and where templates are stored (`registry.py`, never overwritten). |
-| `…/extraction/` | `detection.py` picks a template; `table.py` builds rows from words; `header.py` applies header rules (`regex`, positional `region`, labelled multi-line `block`); `engine.py` runs a template; `inference.py` + `unknown.py` handle new layouts; `generic_rules.py` holds bank-independent header patterns. |
+| `…/extraction/` | `detection.py` picks a template; `table.py` builds rows from words; `header.py` applies header rules (`regex`, positional `region`, labelled multi-line `block`); `engine.py` runs a template; `select.py` picks which template extracts a document (shared by the app, `regress` and the agent); `inference.py` + `unknown.py` handle new layouts; `generic_rules.py` holds bank-independent header patterns. |
 | `…/learning/` | `agent.py` (template agent), `proposers.py` (how candidates are proposed), `markers.py` (privacy-safe layout labels). |
 | `…/storage/` | File store and SQLite. |
 | `…/pipeline.py` | Orchestrates everything, with separate worker pools for extraction and learning. |

@@ -301,3 +301,38 @@ Lightweight record of meaningful decisions (see `docs/PLAN.md` §22).
 - Page images retry once, then offer a click-to-retry placeholder.
 - Pending edits are saved before the screen switches documents.
 - **Re-extract** (`POST /api/documents/{id}/reprocess`, a link in the output pane) runs extraction again with the current code. The result is a new extraction; a saved review stays attached to the extraction it was made on.
+
+## D-019 — Direction: from human review to an autonomous local agent
+
+- **Date:** 2026-10-14 (owner decisions after the second real statement failed layout inference)
+- **Goal:** Remove the human from the loop and extract with measurable confidence. The human trains the system first and is phased out per layout as confidence is earned.
+
+**Two different checks** (named so they are not confused):
+
+| | Self-check | Regression |
+| --- | --- | --- |
+| When | Every new statement, including unknown layouts | Every engine or template change |
+| Compares against | The statement itself: balance chain, printed totals and counts, dates, formats | Approved ("golden") snapshots of earlier statements, field by field |
+| Proves | Numbers and row order are right; *not* text fields | Nothing that worked before broke |
+| Status | Built | Stage 9 |
+
+**Decisions:**
+1. **Extraction never waits for learning.** Known layouts and recipe-guessable layouts extract immediately. When no recipe or template fits, the local agent extracts; the document shows `LEARNING` until its self-checked result is stored. Meanwhile the agent learns a reusable template, which must pass the regression gate before it is saved.
+2. **The agent may see full statement content.** It runs a **free, open-source model locally** (via Ollama, already installed), so no statement data leaves the machine and no data-processing agreement is needed.
+   - If a cloud model is ever used, it needs a data-processing agreement and zero data retention.
+   - A BAA is the US health-data (HIPAA) instrument; bank statements in India fall under the DPDP Act 2023.
+   - Claude, the development assistant, still sees only masked or aggregate output (global rule 3).
+3. **Model:** open-source and free. Up to 3 candidates, up to 2 tested in Stage 10, chosen for this laptop.
+   - **Hardware:** CPU inference, 16 GB RAM (about 2.5 GB free when measured), 2 GB GPU. Realistic sizes are 3–8 B parameters, quantised.
+   - **Installed:** gemma:2b, qwen:4b, phi3:mini, mistral 7B — an older generation.
+   - **Candidates to evaluate:** current small instruct models with permissive licences, e.g. Qwen2.5-7B / 3B-Instruct (Apache-2.0) and Llama-3.2-3B-Instruct (community licence); a vision variant later for OCR.
+   - **Expect:** seconds to minutes per new layout on CPU. Acceptable for learning once; a first extraction of an unseen layout is slower than the template path until better hardware is available.
+4. **Golden approval:** a human approves first, in the review screen, with zero flags and verified arithmetic. The agent approves later, per layout, after a measured track record (Stage 11; proposed threshold: 10 consecutive statements matching the human with zero corrections).
+5. **Order:**
+   1. Stage 7: `Sr No`/`₹` fix (rule-based, fast path) and first golden statements.
+   2. Stage 9: golden set and regression gate — the prerequisite for any automatic change.
+   3. Stage 10: local AI agent.
+   4. Stage 11: autonomy.
+   5. Stage 12: password vault and intake.
+   6. Then OCR, hardening and MCP.
+6. **Tracking:** `CHECKPOINT.md` is the goal checklist (capabilities, % done); `STAGES.md` stays the work plan.

@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 9 (approved 2026-10-14 to run alongside the rest of Stage 7) — golden store, approval, `regress` and both gates are built; the owner approves statements 1–3 as golden in `/review`. Then: anonymised layout copies for CI (C6). Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 9 (approved 2026-10-14 to run alongside the rest of Stage 7) — golden store, approval, `regress` and both gates are built, and the owner approved statements 1–3 as golden (2026-10-14; `regress`: 3 × PASS). Remaining: anonymised layout copies for CI (C6). Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -117,7 +117,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Owner re-reviewed after **Re-extract** (2026-10-14): statement 3 no marks; statement 2 marked holder name and address as printed-but-empty. Cause: the app was still running pre-fix code, which could not run the new `block` rule and silently skipped it. The values extract correctly with current code. Safeguard: templates with a rule kind the code does not know are now rejected at load, so old code falls back to an older version instead of giving partial output.
   - [x] Owner restarted the app and marked statement 2's name and address **Missing** (2026-10-14), on extraction #16, made by the old code before the restart. Re-extracted with current code (#20, template `boi/layout-23f4f42a/v3`): name, address, account number, IFSC, branch, currency and period match the PDF (checked against page 1 with the owner's permission). v3 joins a wrapped cell with spaces instead of adding commas. Review times now shown in IST.
   - [ ] Owner confirms statement 2 extraction #20 in `/review` (do **not** copy the old review: its Missing marks are fixed). Opening/closing balances are not printed on statements 2 and 3, so their first row stays unverifiable.
-  - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
+  - [x] Owner approved the 3 real statements as the first golden set (2026-10-14, Stage 9).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
   - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.
@@ -155,7 +155,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Changing one field of the engine output makes `regress` fail on the right statement and field.
   - The agent cannot save a template that changes any golden output.
   - The 3 real statements are golden.
-- **Evidence so far:** `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor.
+- **Evidence so far:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor.
 
 ## 10. Local AI agent (open-source model), trained with human review — Not started
 

@@ -453,6 +453,6 @@ The review screen will show that review beside the output. The owner gives feedb
   - `tests/test_golden.py`: one changed description is reported at exactly `transactions[5].description` and the other golden stays PASS; the template fallback is caught; the agent gate refuses a hijacking candidate and `registry.save` is never called.
   - 204 tests pass (180 + 10 skipped without PyMuPDF, as in CI).
   - Fingerprints of all real and synthetic outputs are identical after moving the selection logic.
+- **Owner approval (2026-10-14):** statements 1–3 approved as golden v1. `regress --backends both`: 3 × PASS on the gate backend. pdfplumber differs on statement 3 only: each description's last line moves to the next row, the known line-assignment limitation; it is reported, not gated.
 - **Still open in Stage 9:**
-  - The owner approves statements 1–3.
   - **Anonymised layout copies for CI (C6):** word-layout JSON fixtures (positions kept; every non-label token replaced with a fake of the same shape; amounts regenerated so the balance chain holds), served by a test double. The owner checks them before commit; at most 2 experiments per layout (PLAN §6).

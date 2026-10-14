@@ -56,7 +56,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | # | Capability | Status | Evidence / where | Stage |
 |---|---|---|---|---|
 | C1 | Synthetic samples tested on every push (CI) | ✅ | 175 tests, `.github/workflows/ci.yml` | 6 |
-| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ✅ | `golden_snapshots` table, D-022 (owner still to approve statements 1–3) | 9 |
+| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ✅ | `golden_snapshots` table, D-022; statements 1–3 approved 2026-10-14, `regress` 3 × PASS | 9 |
 | C3 | "Approve as golden" in the review screen | ✅ | 5 approval rules, `tests/test_golden.py` | 9 |
 | C4 | `regress` command: re-extract every golden statement and compare field by field | ✅ | `scripts/regress.py`; one changed field is reported at exactly that field | 9 |
 | C5 | Gate: no template saved and no engine change accepted unless C4 is identical, or the diff is re-approved | ✅ | agent `golden_gate`; `.githooks/pre-push` | 9 |

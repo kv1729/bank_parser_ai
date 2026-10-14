@@ -69,7 +69,8 @@ def test_generic_rules_fill_labelled_blocks_and_rupee_currency():
     )])
     values, _ = run(GENERIC_HEADER_RULES, pages)
     assert values["header.account_holder_name"] == "RAVI KUMAR"
-    assert values["header.account_holder_address"] == "12 MAIN ROAD, NEAR CITY PARK, 560001"
+    # One wrapped cell: lines joined with spaces, so no commas are added that the bank did not print.
+    assert values["header.account_holder_address"] == "12 MAIN ROAD NEAR CITY PARK 560001"
     assert values["header.currency"] == "INR"
 
 

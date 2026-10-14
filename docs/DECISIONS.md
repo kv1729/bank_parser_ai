@@ -422,3 +422,12 @@ The review screen will show that review beside the output. The owner gives feedb
 - **What happened:** after **Re-extract**, statement 2 still had empty holder name and address, and the owner marked both. Statement 3 had no marks.
 - **Cause:** the server had been started before the code update. The new v2 templates are read from disk, but the old program did not know the `block` rule kind, logged `unknown_rule_kind` and skipped the rule, so the output was partial with no visible error.
 - **Safeguard:** loading a template now fails when it uses a rule kind the code does not know (`HEADER_RULE_KINDS`). Detection then uses an older version this code can run, instead of producing partial output (`test_unknown_header_rule_kind_rejected`).
+
+### D-021 addendum 2 — owner's third review; data access (2026-10-14)
+
+- **Owner report:** statement 2's name and address marked **Missing**; review times should be in IST.
+- **Cause:** the review was made on extraction #16, produced by the old code before the restart; it was not re-extracted afterwards.
+- **Result:** extraction #20 (current code) has every account field the PDF prints, checked against page 1. Opening/closing balances and a bank address are not printed.
+- **Correction:** a labelled block is one wrapped table cell, so its lines are now joined with spaces (a locality name split across two lines stays one name), not commas the bank did not print. Saved as template `boi/layout-23f4f42a/v3`; v1 and v2 kept. Only statement 2's output changed (fingerprints).
+- **IST:** the review screen shows save times in India Standard Time; the database keeps UTC.
+- **Data access:** the owner allowed Claude to view real statement content for training and debugging. Recorded as an exception in the owner's global rules: this project only, only what a task needs, never committed, logged or sent anywhere.

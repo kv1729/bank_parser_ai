@@ -89,7 +89,7 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 ### Review page (`/review`)
 1. **Left:** pick a PDF. Files from `sample_data\` are imported and processed on first click; password-protected ones use `sample_data\.pdf_password`, otherwise the page asks for the password (kept in memory only).
 2. **Middle:** scroll the PDF.
-3. **Right:** for each account field choose **OK**, **Wrong**, or **Missing** (printed on the statement but not extracted, or only partly extracted). Tick a transaction row if any of its values is wrong; describe rows the extractor missed in **Remarks**. It saves automatically; the bar at the bottom of the panel always shows **Saved ✓** or **Save failed: …** (then press **Save review** again).
+3. **Right:** for each account field choose **OK**, **Wrong**, or **Missing** (printed on the statement but not extracted, or only partly extracted). Tick a transaction row if any of its values is wrong; describe rows the extractor missed in **Remarks**. It saves automatically; the bar at the bottom of the panel always shows **Saved ✓** with the time in IST, or **Save failed: …** (then press **Save review** again).
 4. Click a transaction to jump to its page. Amber-edged rows are ones the validator questioned.
 5. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction; the page shows a note about it with **Copy that review here**.
 

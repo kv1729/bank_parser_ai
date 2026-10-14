@@ -42,10 +42,11 @@ GENERIC_HEADER_RULES = (
                rf"Closing\s+Balance\s*:?\s*({_MONEY})", "i"),
     # Fallbacks (Stage 7, D-021). Each runs only when the rules above left its field empty,
     # so layouts that already worked are unaffected.
-    HeaderRule("block", ("header.account_holder_name",), (1,), r"\bAccount\s+holder\s+name\s*:", "i"),
+    # A block is one table cell whose text wraps, so its lines are joined with spaces.
+    HeaderRule("block", ("header.account_holder_name",), (1,), r"\bAccount\s+holder\s+name\s*:", "i", join=" "),
     HeaderRule("block", ("header.account_holder_address",), (1,),
-               r"\b(?:Account\s+holder|Customer|Communication|Mailing|Registered)\s+address\s*:", "i"),
-    HeaderRule("block", ("header.branch",), (1,), r"\bBranch(?:\s+Name)?\s*:", "i"),
+               r"\b(?:Account\s+holder|Customer|Communication|Mailing|Registered)\s+address\s*:", "i", join=" "),
+    HeaderRule("block", ("header.branch",), (1,), r"\bBranch(?:\s+Name)?\s*:", "i", join=" "),
     HeaderRule("regex", ("header.period_start", "header.period_end"), (1, 2),
                rf"(?:from|period)\s*:?\s*({_MDATE})\s*(?:to|-)\s*:?\s*({_MDATE})", "i",
                date_formats=("%b %d, %Y", "%B %d, %Y", "%b. %d, %Y")),

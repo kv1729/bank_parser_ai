@@ -87,6 +87,13 @@ function inr(v) {
   return sign + int + frac;
 }
 
+// Server times are UTC (ISO 8601); show them in India Standard Time, e.g. "14 Oct 2026, 14:41 IST".
+function ist(iso) {
+  const d = new Date(iso); if (isNaN(d)) return iso;
+  return d.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric",
+                                     hour: "2-digit", minute: "2-digit", hour12: false }) + " IST";
+}
+
 const HEADER_FIELDS = [
   ["bank_name", "Bank"], ["bank_address", "Bank address"], ["account_holder_name", "Account holder"],
   ["account_holder_address", "Holder address"], ["account_number", "Account number"], ["ifsc", "IFSC"],
@@ -216,7 +223,7 @@ async function renderOutput(doc, ex, token) {
   const prev = saved.extraction_id === ex.id ? saved.previous : null;
   if (prev) {                     // re-extracted: the earlier review stays with the extraction it was made on
     const n = prev.flags.length + (prev.missing || []).length;
-    const box = el("div", `Your review of extraction #${prev.extraction_id} (saved ${prev.updated_at.replace("T", " ").slice(0, 16)} UTC, ${n} marked${prev.remarks ? ", with remarks" : ""}) is kept with that extraction. This newer extraction has no review yet.`, "notice");
+    const box = el("div", `Your review of extraction #${prev.extraction_id} (saved ${ist(prev.updated_at)}, ${n} marked${prev.remarks ? ", with remarks" : ""}) is kept with that extraction. This newer extraction has no review yet.`, "notice");
     const copy = el("button", "Copy that review here");
     copy.title = "Copies its marks and remarks onto this extraction; then check them against the new output.";
     copy.onclick = async () => {
@@ -264,7 +271,7 @@ async function renderOutput(doc, ex, token) {
   bar.append(btn, el("span", "", "muted")); bar.lastChild.id = "save-state";
   bar.append(el("span", "", "muted")); bar.lastChild.id = "flag-count";
   out.append(bar);
-  updateCounts(review ? "Saved ✓ " + review.updated_at.replace("T", " ").slice(0, 16) + " UTC" : "Not saved yet", review ? "ok" : "");
+  updateCounts(review ? "Saved ✓ " + ist(review.updated_at) : "Not saved yet", review ? "ok" : "");
 }
 
 async function reextract(docId, oldExtractionId, token) {
@@ -344,7 +351,7 @@ async function save() {
     const r = await fetch(`/api/documents/${docId}/review`, { method: "PUT", headers: { "Content-Type": "application/json" }, body });
     let rv = null; try { rv = await r.json(); } catch { /* error page that is not JSON */ }
     if (!r.ok) throw new Error((rv && rv.detail) || `the server answered ${r.status}`);
-    if (current.docId === docId) { dirty = false; updateCounts("Saved ✓ " + rv.updated_at.replace("T", " ").slice(0, 16) + " UTC", "ok"); }
+    if (current.docId === docId) { dirty = false; updateCounts("Saved ✓ " + ist(rv.updated_at), "ok"); }
     loadSources(current.docId);
     return true;
   } catch (e) {

@@ -5,7 +5,7 @@ Collect identifying strings from local, untracked statements into
     cd backend && uv run python scripts/refresh_sensitive_strings.py
 
 Scans every PDF under sample_data/ that git does not track (i.e. real,
-gitignored statements), using sample_data/.pdf_password when needed, and
+gitignored statements), using the passwords in sample_data/.pdf_password (one per line), and
 records: account numbers, holder-name words, email addresses and long digit
 runs (customer IDs, phone numbers) from the first pages. Lines you add by
 hand below the "# manual" marker are kept. Values are never printed.
@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]          # repository root
 from bank_parser.extraction.lines import page_text      # noqa: E402
 from bank_parser.extraction.unknown import extract_unknown  # noqa: E402
 from bank_parser.pdf import PdfError, open_pdf            # noqa: E402
+from bank_parser.pdf.passwords import read_password_file  # noqa: E402
 
 OUT = ROOT / ".git" / "info" / "sensitive-strings"
 HONORIFICS = {"mr", "mrs", "ms", "miss", "dr", "m/s", "shri", "smt"}
@@ -52,8 +53,7 @@ def collect(path, password):
 
 
 def main():
-    pw_file = ROOT / "sample_data" / ".pdf_password"
-    password = pw_file.read_text(encoding="utf-8").strip() if pw_file.exists() else None
+    passwords = read_password_file(ROOT / "sample_data" / ".pdf_password")
     manual = []
     if OUT.exists():
         lines = OUT.read_text(encoding="utf-8").splitlines()
@@ -61,7 +61,7 @@ def main():
             manual = lines[lines.index("# manual") + 1:]
     found, scanned = set(), 0
     for pdf in untracked_pdfs():
-        for pw in (None, password):
+        for pw in (None, *passwords):
             try:
                 found |= collect(pdf, pw)
                 scanned += 1

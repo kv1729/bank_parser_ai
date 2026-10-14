@@ -31,7 +31,8 @@ def documents():
             ("synthetic HDFC (1 page)", ROOT / "tests/fixtures/pdfs/hdfc_synthetic.pdf", None)]
     real, pw = REPO_ROOT / "sample_data/AccountStatement_02102026_120158.pdf", REPO_ROOT / "sample_data/.pdf_password"
     if real.exists() and pw.exists():
-        docs.append(("real SBI (local only)", real, pw.read_text(encoding="utf-8").strip()))
+        from bank_parser.pdf.passwords import find_password, read_password_file
+        docs.append(("real SBI (local only)", real, find_password(real, read_password_file(pw))))
     return docs
 
 

@@ -132,7 +132,7 @@ def create_app(settings=None, learning_mode="process"):
         p = proc()
         with open(path, "rb") as f:
             stored = p.ingest(f.read, path.name)
-        password = sources.default_password(source_dir)
+        password = sources.default_password(source_dir, path)
         vault.put(stored.document_id, password)
         doc = p.db.get_document(stored.document_id)
         if doc["status"] not in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW) or not p.db.latest_extraction(stored.document_id):
@@ -148,7 +148,8 @@ def create_app(settings=None, learning_mode="process"):
         if password is None:
             for s in sources.list():
                 if s["document_id"] == document_id:
-                    password = sources.default_password(sources.resolve(s["source_id"])[0])
+                    source_dir, source_path = sources.resolve(s["source_id"])
+                    password = sources.default_password(source_dir, source_path)
                     vault.put(document_id, password)
                     break
         proc().submit(document_id, password)

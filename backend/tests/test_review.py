@@ -106,7 +106,8 @@ def test_encrypted_pdf_uses_folder_password_and_unlock(client):
     doc = pymupdf.open(SBI_PDF)
     doc.save(client.private_dir / "locked.pdf", encryption=pymupdf.PDF_ENCRYPT_AES_256, user_pw="pw123", owner_pw="o")
     doc.close()
-    (client.private_dir / ".pdf_password").write_text("pw123\n", encoding="utf-8")
+    # One password per line; the right one is on line 2 (as when statements from several banks share a folder).
+    (client.private_dir / ".pdf_password").write_text("other-bank-password\npw123\n", encoding="utf-8")
     doc_id = _import(client, "locked.pdf")
     assert _wait(client, doc_id)["document"]["status"] == "EXTRACTED"     # folder password used, in memory
     assert client.get(f"/api/documents/{doc_id}/pages/1.png").status_code == 200

@@ -107,6 +107,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Runbook (`docs/RUNBOOK.md`) and one-click launcher (`start-app.cmd`) after the owner's start-up failed (2026-10-07): starting from the repository root used the stale root `.venv` → `ModuleNotFoundError`.
   - [x] Real statement re-extracted with current code (extraction #8, 2026-10-07): 76/81 rows start with WDL/DEP TFR, none trailing; validation PASS. Owner compared one row against a direct reading and approved the output.
   - [x] CSV export of stored results (`backend/scripts/export_extraction.py`, runbook §4a).
+  - [x] `sample_data/.pdf_password` holds one password per line (2026-10-14): review import, re-extract, privacy gate, sensitive-string refresh, tests and benchmark try each line.
+  - [ ] Second real statement (2 pages, `dd6efc05…`) fails layout inference: first column is `Sr No`, not the date; amounts carry a `₹` prefix. Fix proposed, awaiting owner approval (Stage 8).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
   - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.

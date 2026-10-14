@@ -416,3 +416,9 @@ The review screen will show that review beside the output. The owner gives feedb
   - The bar is always visible, with clear saved/failed states.
   - Pending edits are saved before switching statements, with a warning when leaving with unsaved edits.
   - After a re-extraction, the earlier review is offered with **Copy that review here**.
+
+### D-021 addendum — owner's second review (2026-10-14)
+
+- **What happened:** after **Re-extract**, statement 2 still had empty holder name and address, and the owner marked both. Statement 3 had no marks.
+- **Cause:** the server had been started before the code update. The new v2 templates are read from disk, but the old program did not know the `block` rule kind, logged `unknown_rule_kind` and skipped the rule, so the output was partial with no visible error.
+- **Safeguard:** loading a template now fails when it uses a rule kind the code does not know (`HEADER_RULE_KINDS`). Detection then uses an older version this code can run, instead of producing partial output (`test_unknown_header_rule_kind_rejected`).

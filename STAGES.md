@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 7 — owner re-reviews statements 2 and 3 after the account-details fix (D-021), then approves the first golden statements. **Next:** Stage 9 (golden regression gate) → Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 7 — owner restarts the app, re-extracts statement 2 and re-checks it (the 2026-10-14 review ran on old code); statements 1–3 then reach zero marks. **Next:** Stage 9 (golden regression gate), proposed to run alongside the rest of Stage 7 (collecting more statements) — needs owner approval. Then Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -114,7 +114,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] Second real statement (`dd6efc05…`): serial-number first column, `₹` amounts, header on page 1 only, newest-first order. Fixed (D-020): 35/36 rows verified; agent learned `boi/layout-23f4f42a/v1`. Earlier outputs identical (fingerprints).
   - [x] Third real statement (`171b6c9d…`): serial-number first column, header-only grid, few labels. Extracted, 17/18 rows verified; agent learned `icici/layout-ec27b806/v1` (heading markers, D-020).
   - [x] Owner's first look at statements 2 and 3 (2026-10-14): account details (name, address, branch, period) were not extracted, and saving a review seemed not to work. Fixed (D-021): labelled-block header rule, month-name periods, currency; templates `boi/layout-23f4f42a/v2` and `icici/layout-ec27b806/v2` (9 header fields each, was 6 and 2; transactions identical). Review screen: per field **OK / Wrong / Missing**, Save bar always visible with a clear saved/failed message, edits kept when switching statements, earlier review offered after re-extraction. Statement 1 and synthetic outputs identical (fingerprints).
-  - [ ] Owner reviews statements 2 and 3 again after **Re-extract** (opening/closing balances are not printed on either, so the first row stays unverifiable).
+  - [x] Owner re-reviewed after **Re-extract** (2026-10-14): statement 3 no marks; statement 2 marked holder name and address as printed-but-empty. Cause: the app was still running pre-fix code, which could not run the new `block` rule and silently skipped it. The values extract correctly with current code. Safeguard: templates with a rule kind the code does not know are now rejected at load, so old code falls back to an older version instead of giving partial output.
+  - [ ] Owner restarts the app, re-extracts statement 2 and confirms name and address (opening/closing balances are not printed on statements 2 and 3, so their first row stays unverifiable).
   - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
@@ -127,6 +128,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [ ] Commit the real-layout template from `data/templates/`? It holds labels and geometry only.
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
+  - [ ] Whether Claude may view real statement content for training/debugging (owner asked 2026-10-14). Global rule 3 currently forbids it; if allowed, the owner states a narrow, dated exception in `~/.claude/CLAUDE.md` (which statements, which fields, until when). Until then, masked diagnostics only.
+  - [ ] Approve running Stage 9 alongside the rest of Stage 7 (global rule 2: one stage at a time unless approved).
 
 ## 8. Speed — Done (2026-10-14; remaining robustness items moved)
 

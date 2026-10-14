@@ -107,3 +107,11 @@ def test_heading_runs_follow_printed_lines():
     runs = heading_runs(text, tokens)
     assert "Transaction Cheque Transaction Withdrawal Deposit Balance" in runs
     assert all(r in text for r in runs)                                  # always contiguous in the text
+
+
+def test_unknown_header_rule_kind_rejected(committed):
+    """D-021: code that cannot run a rule kind must not use the template (it would leave fields empty)."""
+    d = template_to_dict(committed.get(f"{SBI_LAYOUT}/v1"))
+    d["header_rules"][0]["kind"] = "future_kind"
+    with pytest.raises(TemplateError):
+        template_from_dict(d)

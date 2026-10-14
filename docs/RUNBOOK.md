@@ -151,10 +151,11 @@ From `backend\`:
 | `'uv' is not recognized` | uv not installed, or terminal opened before installing | Section 1, step 1; then open a **new** terminal |
 | `uv sync` fails | No internet, or a broken download | Check your connection, run `uv sync` again from `backend\` |
 | Review page shows old results or old behaviour | The server is still running old code | Stop it (section 5), `git pull` (section 2), start again (section 3), then **Re-extract** the PDF |
+| After **Re-extract**, a field printed on the statement is still empty, or the review page has no **OK / Wrong / Missing** choice | The server window was started **before** the code was updated: new templates are read from disk, but the program is still the old one (2026-10-14, D-021) | Stop the server (Ctrl+C), start it again with `start-app.cmd`, then **Re-extract** again |
 | Some PDF pages show "could not be shown" | A page failed to render | Click the message to retry. If many fail, check the server window for errors |
 | Status `NEEDS_PASSWORD` | Encrypted PDF without the right password | On `/review`, type the password; or add it as a new line in `sample_data\.pdf_password` and select the file again |
 | A PDF copied into `data\documents\` does not appear anywhere | That folder is the app's internal store (files named by their SHA-256) | Put statements in `sample_data\` or upload them |
-| Status `NEEDS_OCR` | Scanned PDF (no text layer) | Not supported yet (Stage 10) |
+| Status `NEEDS_OCR` | Scanned PDF (no text layer) | Not supported yet (Stage 13) |
 | The server window closes or stops on its own | Windows was low on memory, or the window was closed | Start it again; close other heavy programs |
 
 ## 8. Checklist — what to ensure every time

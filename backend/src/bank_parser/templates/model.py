@@ -7,6 +7,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
 TEMPLATE_FORMAT = 1
+HEADER_RULE_KINDS = ("regex", "region", "block")
 
 COLUMN_ROLES = ("txn_date", "value_date", "description", "reference", "debit", "credit",
                 "amount", "dr_cr", "balance", "ignore")
@@ -139,6 +140,10 @@ def template_from_dict(d):
     rules = []
     for r in d.get("header_rules", ()):
         targets = tuple(r["targets"])
+        # A kind this code cannot run would silently leave fields empty; reject the template
+        # instead, so detection falls back to a version this code understands (D-021).
+        if r.get("kind") not in HEADER_RULE_KINDS:
+            raise TemplateError(f"header_rules: unsupported kind {r.get('kind')!r}")
         for tg in targets:
             if tg not in HEADER_TARGETS and not tg.startswith("header.extra."):
                 raise TemplateError(f"header_rules: unknown target {tg!r}")

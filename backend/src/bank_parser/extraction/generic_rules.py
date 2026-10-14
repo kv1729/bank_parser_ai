@@ -11,6 +11,7 @@ from bank_parser.templates.model import HeaderRule
 
 _DATE = r"\d{1,2}[-/ .](?:\d{1,2}|[A-Za-z]{3,9})[-/ .]\d{2,4}"
 _MONEY = r"-?[\d,]+\.\d{2}(?:\s?(?:CR|DR|Cr|Dr))?"
+_MDATE = r"[A-Za-z]{3,9}\.?\s+\d{1,2},\s*\d{4}"          # "Jan 9, 2026", "September 30, 2026"
 
 GENERIC_HEADER_RULES = (
     HeaderRule("regex", ("header.account_number",), (1, 2),
@@ -39,6 +40,18 @@ GENERIC_HEADER_RULES = (
                "is"),
     HeaderRule("regex", ("header.closing_balance",), (-1, 1),
                rf"Closing\s+Balance\s*:?\s*({_MONEY})", "i"),
+    # Fallbacks (Stage 7, D-021). Each runs only when the rules above left its field empty,
+    # so layouts that already worked are unaffected.
+    # A block is one table cell whose text wraps, so its lines are joined with spaces.
+    HeaderRule("block", ("header.account_holder_name",), (1,), r"\bAccount\s+holder\s+name\s*:", "i", join=" "),
+    HeaderRule("block", ("header.account_holder_address",), (1,),
+               r"\b(?:Account\s+holder|Customer|Communication|Mailing|Registered)\s+address\s*:", "i", join=" "),
+    HeaderRule("block", ("header.branch",), (1,), r"\bBranch(?:\s+Name)?\s*:", "i", join=" "),
+    HeaderRule("regex", ("header.period_start", "header.period_end"), (1, 2),
+               rf"(?:from|period)\s*:?\s*({_MDATE})\s*(?:to|-)\s*:?\s*({_MDATE})", "i",
+               date_formats=("%b %d, %Y", "%B %d, %Y", "%b. %d, %Y")),
+    HeaderRule("regex", ("header.currency",), (1,), r"\bin\s+(INR|USD)\b"),
+    HeaderRule("regex", ("header.currency",), (1,), r"(₹)"),
 )
 
 # IFSC bank prefix -> (bank_code, bank name). Identity comes from the account's

@@ -18,15 +18,17 @@ import threading
 import time
 
 from bank_parser.config import Settings
-from bank_parser.extraction.detection import detect, detection_text
+from bank_parser.extraction.detection import detection_text
 from bank_parser.extraction.engine import extract_with_template
+from bank_parser.extraction.select import extract_known
+from bank_parser.golden import golden_gate
 from bank_parser.extraction.unknown import STRATEGY as UNKNOWN_STRATEGY, extract_unknown
 from bank_parser.learning import LearningBudget, RegressionDoc, TemplateAgent
 from bank_parser.pdf import MalformedPdf, PasswordRequired, PdfKind, classify, open_pdf
 from bank_parser.core.schema import statement_to_dict
 from bank_parser.storage import Database, DocumentStore
 from bank_parser.templates import TemplateRegistry
-from bank_parser.core.validation import Status, report_to_dict, validate_statement
+from bank_parser.core.validation import report_to_dict, validate_statement
 
 log = logging.getLogger("bank_parser")   # never log statement content, names or numbers
 
@@ -72,7 +74,8 @@ def run_learning_job(settings, job_id, document_id, path, password):
         budget = LearningBudget(max_candidates=settings.learning_max_candidates,
                                 max_refinements=settings.learning_max_refinements,
                                 max_seconds=settings.learning_max_seconds)
-        agent = TemplateAgent(registry, regression_corpus(settings, db), budget, backend=settings.pdf_backend)
+        agent = TemplateAgent(registry, regression_corpus(settings, db), budget, backend=settings.pdf_backend,
+                              golden_check=golden_gate(db, settings))
         outcome = agent.learn(path, password, document_id)
         db.update_template_job(job_id, status=outcome.status.value, template_id=outcome.template_id,
                                reason=outcome.reason, attempts=outcome.attempts, duration_ms=outcome.duration_ms)
@@ -140,17 +143,9 @@ class Processor:
         with open_pdf(path, password, s.pdf_backend) as doc:
             text = detection_text(doc)
             self.registry.reload()      # pick up templates learned or promoted since the last document
-            matches = detect(text, self.registry.all())
             t_detect = time.perf_counter()
-            best = None
-            for m in matches:                       # known layout: deterministic template path
-                result = extract_with_template(doc, m.template, document_id, strategy="template")
-                report = validate_statement(result.statement)
-                if best is None or (report.status is not Status.FAIL and best[2].status is Status.FAIL):
-                    best = (m.template, result, report)
-                if report.status is not Status.FAIL and not result.problems:
-                    break
-            if best is not None and best[2].status is not Status.FAIL:
+            best = extract_known(doc, text, self.registry.all(), document_id)   # known layout: template path
+            if best is not None:
                 template, result, report = best
                 self._persist(document_id, "known_template", "template", template.template_id, result, report,
                               {"classify_ms": _ms(t0, t_classify), "detect_ms": _ms(t_classify, t_detect)}, cls)

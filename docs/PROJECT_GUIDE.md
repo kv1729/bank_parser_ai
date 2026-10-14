@@ -47,14 +47,15 @@ Interactive diagrams (open in a browser):
 | 6. Store | The result, validation report and timings are saved to SQLite. Status is `EXTRACTED` only if the arithmetic verified. | `pipeline.py`, `storage/db.py` |
 | 7. Show | The web page polls for status and shows the header, checks and transactions. | `frontend/index.html` |
 | 8. After learning | If the agent saved a template, the document is re-extracted with it, and future statements of that layout take step 4a. | `pipeline.py` (`_learning_done`) |
-| 9. Review (you) | At http://127.0.0.1:8000/review you pick a PDF and see it page by page next to the extracted output. Tick every output that is wrong, write remarks; it auto-saves. | `frontend/review.html`, `review.py`, `pdf/render.py` |
+| 9. Review (you) | At http://127.0.0.1:8000/review you pick a PDF and see it page by page next to the extracted output. Mark each field OK, Wrong or Missing (printed but not extracted), tick wrong transaction rows, write remarks; it auto-saves. | `frontend/review.html`, `review.py`, `pdf/render.py` |
+| 10. Golden (you) | When everything is OK, **Approve as golden**: the output is stored as the expected answer. `scripts/regress.py` (also run before every push) and the template agent then refuse any change that alters a golden output. | `golden.py`, `extraction/select.py`, `scripts/regress.py`, `.githooks/pre-push` |
 
 ## 3a. Verifying an extraction yourself (review screen)
 
 1. Start the app (section 7) and open http://127.0.0.1:8000/review.
 2. **Left:** the PDFs you can review — your private statements in `sample_data/`, the synthetic samples, and anything uploaded. A file not yet imported is imported and processed when you click it. A password-protected file uses `sample_data/.pdf_password` if present; otherwise the page asks for the password (kept in memory only).
 3. **Middle:** the PDF, page by page; scroll freely.
-4. **Right:** what was extracted. Tick the box next to every header field, printed total or transaction row that is **wrong**. Write your observations in **Remarks**. It saves automatically ("Saved …" at the bottom); the list on the left shows how many items you flagged.
+4. **Right:** what was extracted. For each header field and printed total choose **OK**, **Wrong**, or **Missing** (printed on the statement but not extracted). Tick every transaction row that is wrong. Write your observations in **Remarks**. It saves automatically; the bar at the bottom always shows **Saved ✓** or **Save failed: …**, and the list on the left shows how many items you marked.
 5. Click a transaction to jump the PDF to its page. Rows with an amber edge are ones the validator itself questioned.
 6. After a fix, use **Re-extract with current code** (next to the extraction number) to get fresh output for the same PDF. Your earlier review stays attached to the earlier extraction.
 
@@ -76,7 +77,7 @@ Your reviews stay in `data/bank_parser.db` (gitignored) and become the hand-chec
 | `backend/src/bank_parser/core/` | The domain: output format (`schema.py`: `Statement`, `Transaction`, `Decimal` money) and all checks (`validation.py`). No file or network access. |
 | `…/pdf/` | Opens PDFs and returns words with positions. Two interchangeable backends; classification and passwords. |
 | `…/templates/` | What a template is (`model.py`) and where templates are stored (`registry.py`, never overwritten). |
-| `…/extraction/` | `detection.py` picks a template; `table.py` builds rows from words; `header.py` applies header rules; `engine.py` runs a template; `inference.py` + `unknown.py` handle new layouts; `generic_rules.py` holds bank-independent header patterns. |
+| `…/extraction/` | `detection.py` picks a template; `table.py` builds rows from words; `header.py` applies header rules (`regex`, positional `region`, labelled multi-line `block`); `engine.py` runs a template; `select.py` picks which template extracts a document (shared by the app, `regress` and the agent); `inference.py` + `unknown.py` handle new layouts; `generic_rules.py` holds bank-independent header patterns. |
 | `…/learning/` | `agent.py` (template agent), `proposers.py` (how candidates are proposed), `markers.py` (privacy-safe layout labels). |
 | `…/storage/` | File store and SQLite. |
 | `…/pipeline.py` | Orchestrates everything, with separate worker pools for extraction and learning. |

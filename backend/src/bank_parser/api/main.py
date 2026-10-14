@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from bank_parser.config import Settings
+from bank_parser.golden import GoldenError, check_approvable, diff, snapshot
 from bank_parser.pdf import MalformedPdf, PasswordRequired, open_pdf
 from bank_parser.pdf.render import render_page_png
 from bank_parser.pipeline import DocStatus, Processor
@@ -109,17 +110,20 @@ def create_app(settings=None, learning_mode="process"):
         p = proc()
         docs = {d["id"]: d for d in p.db.list_documents(limit=1000)}
         flagged = p.db.review_counts()
+        golden = p.db.golden_versions()
         out, seen = [], set()
         for s in sources.list():
             d = docs.get(s["document_id"])
             seen.add(s["document_id"])
             out.append({**s, "imported": d is not None, "status": d["status"] if d else None,
-                        "page_count": d["page_count"] if d else None, "flagged": flagged.get(s["document_id"])})
+                        "page_count": d["page_count"] if d else None, "flagged": flagged.get(s["document_id"]),
+                        "golden_version": golden.get(s["document_id"])})
         for d in docs.values():
             if d["id"] not in seen:
                 out.append({"source_id": None, "group": "Uploaded", "name": d["original_name"] or d["id"][:12],
                             "size_bytes": d["size_bytes"], "document_id": d["id"], "imported": True,
-                            "status": d["status"], "page_count": d["page_count"], "flagged": flagged.get(d["id"])})
+                            "status": d["status"], "page_count": d["page_count"], "flagged": flagged.get(d["id"]),
+                            "golden_version": golden.get(d["id"])})
         return out
 
     @app.post("/api/review/sources/{source_id}/import")
@@ -187,8 +191,11 @@ def create_app(settings=None, learning_mode="process"):
         require_document(document_id)
         ex = p.db.latest_extraction(document_id)
         if not ex:
-            return {"extraction_id": None, "review": None}
-        return {"extraction_id": ex["id"], "review": p.db.get_review(document_id, ex["id"])}
+            return {"extraction_id": None, "review": None, "previous": None}
+        review = p.db.get_review(document_id, ex["id"])
+        # A re-extraction starts without a review; show the last one so it is not lost from view.
+        previous = None if review else p.db.previous_review(document_id, ex["id"])
+        return {"extraction_id": ex["id"], "review": review, "previous": previous}
 
     @app.put("/api/documents/{document_id}/review")
     def save_review(document_id: str, body: dict = Body(...)):
@@ -198,10 +205,45 @@ def create_app(settings=None, learning_mode="process"):
         if not ex or ex["document_id"] != document_id:
             raise HTTPException(400, "unknown extraction for this document")
         try:
-            flags, remarks = validate_review(ex["statement"], body.get("flags", []), body.get("remarks", ""))
+            flags, remarks, missing = validate_review(ex["statement"], body.get("flags", []), body.get("remarks", ""),
+                                                      body.get("missing", []))
         except ReviewError as e:
             raise HTTPException(400, str(e))
-        return p.db.save_review(document_id, ex["id"], flags, remarks)
+        return p.db.save_review(document_id, ex["id"], flags, remarks, missing)
+
+    # --- golden statements (Stage 9, D-022) ---------------------------------------------------
+
+    def golden_info(g):
+        return None if g is None else {k: g[k] for k in ("version", "extraction_id", "workflow", "template_id",
+                                                         "backend", "engine_commit", "validation_status", "warnings",
+                                                         "approved_at")}
+
+    @app.get("/api/documents/{document_id}/golden")
+    def get_golden(document_id: str):
+        """The active golden snapshot and how the latest extraction differs from it."""
+        p = proc()
+        require_document(document_id)
+        g, ex = p.db.golden_for(document_id), p.db.latest_extraction(document_id)
+        changes = None
+        if g is not None and ex is not None and ex["statement"] is not None:
+            changes = [{"path": c.path, "old": c.old, "new": c.new} for c in diff(g["snapshot"], snapshot(ex["statement"]))]
+        return {"golden": golden_info(g), "latest_extraction_id": ex["id"] if ex else None, "differs": changes}
+
+    @app.post("/api/documents/{document_id}/golden")
+    def approve_golden(document_id: str, body: dict = Body(...)):
+        """Approve the latest extraction as golden (only if every approval rule holds)."""
+        p = proc()
+        require_document(document_id)
+        extraction_id = body.get("extraction_id")
+        if not isinstance(extraction_id, int):
+            raise HTTPException(400, "extraction_id must be an integer")
+        p.registry.reload()
+        try:
+            kwargs = check_approvable(p.db, settings, p.registry.all(), document_id, extraction_id,
+                                      acknowledge_warnings=body.get("acknowledge_warnings") is True)
+        except GoldenError as e:
+            raise HTTPException(409, {"code": e.code, "message": str(e), **e.details})
+        return {"golden": golden_info(p.db.add_golden(document_id, **kwargs))}
 
     return app
 

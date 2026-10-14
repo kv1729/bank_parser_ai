@@ -1,0 +1,11 @@
+#!/bin/sh
+# Non-regression gate (Stage 9, D-022): every golden statement must still extract
+# exactly as approved. Runs only where a local golden set exists (skips elsewhere).
+# Enabled per clone with:  git config core.hooksPath .githooks
+# Do not bypass with --no-verify unless the owner approves (same rule as the privacy hooks).
+cd "$(git rev-parse --show-toplevel)/backend" || exit 0
+if ! command -v uv >/dev/null 2>&1; then
+  echo "pre-push: uv not found, golden regression check skipped."
+  exit 0
+fi
+exec uv run --quiet python scripts/regress.py

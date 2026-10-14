@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 7 — fix the `Sr No`/`₹` layout gap, then the owner approves the first golden statements. **Next:** Stage 9 (golden regression gate) → Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 9 (approved 2026-10-14 to run alongside the rest of Stage 7) — golden store, approval, `regress` and both gates are built, and the owner approved statements 1–3 as golden (2026-10-14; `regress`: 3 × PASS). Remaining: anonymised layout copies for CI (C6). Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
 | 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
-| 9 | Golden set & non-regression gate | Not started | — | — |
+| 9 | Golden set & non-regression gate | In progress (alongside 7, approved) | 2026-10-14 | — |
 | 10 | Local AI agent (open-source model), trained with human review | Not started | — | — |
 | 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
 | 12 | Password vault & intake | Not started | — | — |
@@ -113,8 +113,11 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] `sample_data/.pdf_password` holds one password per line (2026-10-14): review import, re-extract, privacy gate, sensitive-string refresh, tests and benchmark try each line.
   - [x] Second real statement (`dd6efc05…`): serial-number first column, `₹` amounts, header on page 1 only, newest-first order. Fixed (D-020): 35/36 rows verified; agent learned `boi/layout-23f4f42a/v1`. Earlier outputs identical (fingerprints).
   - [x] Third real statement (`171b6c9d…`): serial-number first column, header-only grid, few labels. Extracted, 17/18 rows verified; agent learned `icici/layout-ec27b806/v1` (heading markers, D-020).
-  - [ ] Owner reviews statements 2 and 3 in `/review` (they show as NEEDS_REVIEW: first row unverifiable without an opening balance; some header fields not found).
-  - [ ] Owner approves the 3 real statements as the first golden set (needs Stage 9's "Approve as golden"; until then, reviewed in `/review`).
+  - [x] Owner's first look at statements 2 and 3 (2026-10-14): account details (name, address, branch, period) were not extracted, and saving a review seemed not to work. Fixed (D-021): labelled-block header rule, month-name periods, currency; templates `boi/layout-23f4f42a/v2` and `icici/layout-ec27b806/v2` (9 header fields each, was 6 and 2; transactions identical). Review screen: per field **OK / Wrong / Missing**, Save bar always visible with a clear saved/failed message, edits kept when switching statements, earlier review offered after re-extraction. Statement 1 and synthetic outputs identical (fingerprints).
+  - [x] Owner re-reviewed after **Re-extract** (2026-10-14): statement 3 no marks; statement 2 marked holder name and address as printed-but-empty. Cause: the app was still running pre-fix code, which could not run the new `block` rule and silently skipped it. The values extract correctly with current code. Safeguard: templates with a rule kind the code does not know are now rejected at load, so old code falls back to an older version instead of giving partial output.
+  - [x] Owner restarted the app and marked statement 2's name and address **Missing** (2026-10-14), on extraction #16, made by the old code before the restart. Re-extracted with current code (#20, template `boi/layout-23f4f42a/v3`): name, address, account number, IFSC, branch, currency and period match the PDF (checked against page 1 with the owner's permission). v3 joins a wrapped cell with spaces instead of adding commas. Review times now shown in IST.
+  - [ ] Owner confirms statement 2 extraction #20 in `/review` (do **not** copy the old review: its Missing marks are fixed). Opening/closing balances are not printed on statements 2 and 3, so their first row stays unverifiable.
+  - [x] Owner approved the 3 real statements as the first golden set (2026-10-14, Stage 9).
   - [ ] Owner reviews further statements in `/review` (flags + remarks).
   - [ ] ≥20 statements across ~5 banks, each reviewed (the review becomes its labelled expected output, kept local-only).
   - [ ] An accuracy report built from the reviews: fully-correct %, row precision/recall, field accuracy.
@@ -126,6 +129,8 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [ ] Commit the real-layout template from `data/templates/`? It holds labels and geometry only.
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
+  - [x] Claude may view real statement content for training/debugging (owner, 2026-10-14). Recorded as rule 5 in `~/.claude/CLAUDE.md`: this project only, view only what a task needs, never commit, log or send it anywhere.
+  - [ ] Approve running Stage 9 alongside the rest of Stage 7 (global rule 2: one stage at a time unless approved).
 
 ## 8. Speed — Done (2026-10-14; remaining robustness items moved)
 
@@ -137,19 +142,20 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Layouts with neither ruled cells nor heading text → Stage 10 (agent; Docling as a candidate).
   - Single parsing pass; cross-backend check on every new statement → Stage 9 (part of the regression run).
 
-## 9. Golden set & non-regression gate — Not started
+## 9. Golden set & non-regression gate — In progress
 
 - **Goal:** Nothing that worked before can break: every engine or template change is checked against every approved statement.
 - **Deliverables:**
-  - [ ] Golden store (local, private): PDF fingerprint, approved output snapshot, engine and template version, password reference.
-  - [ ] "Approve as golden" in the review screen (only with zero flags and verified arithmetic); human approval for now (D-019).
-  - [ ] `regress` command: re-extract every golden statement and compare field by field; readable diff.
-  - [ ] Gate in front of template saving (agent) and engine changes (pre-push hook for private statements; CI for synthetic ones).
-  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI.
+  - [x] Golden store (local, private; D-022): table `golden_snapshots` in `data/bank_parser.db`, append-only versions with the approved output, workflow, template, backend, engine commit, acknowledged warnings and password source (never the password).
+  - [x] "Approve as golden" in `/review`: only the latest extraction, with a saved review that has 0 wrong and 0 missing, no failed validation (warnings must be confirmed), a PDF that can be reopened (unencrypted, or a line of `sample_data/.pdf_password`), and output the current code reproduces. Re-approval adds a version. Golden badge and field-by-field differences on screen.
+  - [x] `regress` command (`backend/scripts/regress.py`): re-extracts every golden statement exactly as the app does (shared `extraction/select.py`) and compares field by field, plus the extraction path (a template that stops working is caught even when the fallback output matches). Masked values by default; `--show-values`; `--backends both`. Report in `data/regress/`.
+  - [x] Gates: the template agent cannot save a template that changes any golden output (`golden_gate`); `.githooks/pre-push` runs `regress` before every push (skips where no golden set exists). Synthetic samples stay covered by CI tests.
+  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI: word-layout JSON fixtures, owner checks them before commit (plan in D-022).
 - **Exit criteria:**
   - Changing one field of the engine output makes `regress` fail on the right statement and field.
   - The agent cannot save a template that changes any golden output.
   - The 3 real statements are golden.
+- **Evidence so far:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor.
 
 ## 10. Local AI agent (open-source model), trained with human review — Not started
 

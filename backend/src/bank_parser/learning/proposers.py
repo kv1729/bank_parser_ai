@@ -87,8 +87,9 @@ class HeuristicProposer(Proposer):
             )
 
     def refine(self, ctx, template, feedback):
-        if feedback == "markers_ambiguous":
-            # Use more (and more specific) labels so the layout stops matching other documents.
+        if feedback in ("markers_ambiguous", "golden_changed"):
+            # Use more (and more specific) labels so the layout stops matching other documents
+            # (a candidate that changes a golden statement usually took over its detection).
             personal = ()
             labels = [l for l in candidate_labels(ctx.text) if l not in template.markers]
             extra = tuple(l for l in labels if len(l.split()) >= 2)[: MAX_MARKERS]

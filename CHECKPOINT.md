@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-14 (after D-020). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-14 (Stage 9 core built, D-022). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -14,15 +14,15 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 
 | Area | Done | Total | Status |
 |---|---|---|---|
-| A. Extraction core | 7 | 8 | 🟡 |
+| A. Extraction core | 8 | 9 | 🟡 |
 | B. Self-check of each extraction | 4 | 6 | 🟡 |
-| C. Regression safety (golden set) | 1 | 6 | ⬜ |
+| C. Regression safety (golden set) | 5 | 6 | 🟡 |
 | D. AI agent (learning new layouts) | 2 | 9 | ⬜ |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **20** | **52** | **38%** |
+| **Total** | **25** | **53** | **47%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -38,6 +38,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | A6 | Known layout extracted in < 0.5 s | ✅ | 0.41 s for 9 pages (D-015) | 8 |
 | A7 | Layouts whose first column is not the date (`Sr No`), currency symbols, header on page 1 only, newest-first order | ✅ | D-020: statements 2 and 3 extracted, templates learned; earlier outputs identical | 7 |
 | A8 | Layouts without ruled grid lines **and** without heading text | ⬜ | The agent's job (D), or Docling (D-016) | 10 |
+| A9 | Account details on every real layout: holder name and address (labelled, multi-line or unlabelled), branch, period, currency | ✅ | D-021: 9 header fields on each of statements 2 and 3 | 7 |
 
 ## B. Self-check of each extraction (no expected answer needed)
 
@@ -55,10 +56,10 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | # | Capability | Status | Evidence / where | Stage |
 |---|---|---|---|---|
 | C1 | Synthetic samples tested on every push (CI) | ✅ | 175 tests, `.github/workflows/ci.yml` | 6 |
-| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ⬜ | | 9 |
-| C3 | "Approve as golden" in the review screen | ⬜ | | 9 |
-| C4 | `regress` command: re-extract every golden statement and compare field by field | ⬜ | | 9 |
-| C5 | Gate: no template saved and no engine change accepted unless C4 is identical, or the diff is re-approved | ⬜ | | 9 |
+| C2 | **Golden set**: approved statements with their approved output snapshot (private, local) | ✅ | `golden_snapshots` table, D-022; statements 1–3 approved 2026-10-14, `regress` 3 × PASS | 9 |
+| C3 | "Approve as golden" in the review screen | ✅ | 5 approval rules, `tests/test_golden.py` | 9 |
+| C4 | `regress` command: re-extract every golden statement and compare field by field | ✅ | `scripts/regress.py`; one changed field is reported at exactly that field | 9 |
+| C5 | Gate: no template saved and no engine change accepted unless C4 is identical, or the diff is re-approved | ✅ | agent `golden_gate`; `.githooks/pre-push` | 9 |
 | C6 | Anonymised copies of each golden layout (same geometry, fake values) so CI protects it publicly | ⬜ | | 9 |
 
 ## D. AI agent: learning new layouts
@@ -89,7 +90,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 
 | # | Capability | Status | Evidence / where | Stage |
 |---|---|---|---|---|
-| F1 | Upload page and review screen | ✅ | D-017 | 7 |
+| F1 | Upload page and review screen (OK / Wrong / Missing per field) | ✅ | D-017, D-021 | 7 |
 | F2 | Content-addressed storage (same file = same document) | ✅ | D-012 | 4 |
 | F3 | Passwords in Windows Credential Manager, keyed by document ("Remember password") | ⬜ | Today: `sample_data/.pdf_password`, plain text | 12 |
 | F4 | One intake path: watched `inbox/` folder or upload | ⬜ | | 12 |

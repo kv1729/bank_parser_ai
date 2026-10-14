@@ -61,7 +61,9 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 | `templates/` | Template model (pure data) and append-only versioned registry |
 | `extraction/detection.py` | Marker matching |
 | `extraction/table.py` | `word_columns` engine: rows from positioned words, multi-line descriptions, wrapped dates, rows split across pages, footer detection |
-| `extraction/header.py` | Header rules: `regex` and positional `region` rules |
+| `extraction/header.py` | Header rules: `regex`, positional `region`, and labelled multi-line `block` rules (D-021). Templates with a rule kind the code does not know are rejected at load |
+| `extraction/select.py` | Which template extracts a document (newest, most specific, first that validates); shared by Workflow 1, `regress` and the agent gate (D-022) |
+| `golden.py` | Golden statements: snapshot, field-by-field diff, approval rules, regression run, agent gate (D-022) |
 | `extraction/inference.py`, `unknown.py` | Unknown-layout inference and Workflow 1 |
 | `extraction/generic_rules.py` | Layout-independent header rules; bank identity from the account's IFSC |
 | `core/validation.py` | Balance chain, reconciliation, rows, header → `PASS / WARN / FAIL / SKIP` report |

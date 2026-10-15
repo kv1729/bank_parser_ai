@@ -100,12 +100,32 @@ def _add_cells(row, cells):
         row.add(key, " ".join(texts))
 
 
-def assemble_rows(pages, spec):
-    """Turn PageLayouts into RawRows. `pages` may be a generator (one page in memory at a time)."""
+def _looks_like_row(line, date_col):
+    """A line that would start a transaction: a date at the date column."""
+    text = " ".join(w.text for w in line.words if date_col.x0 - _STRADDLE_MARGIN <= w.x_mid < date_col.x1 + _STRADDLE_MARGIN)
+    return bool(text) and looks_like_date_start(text)
+
+
+def assemble_rows(pages, spec, trace=None):
+    """Turn PageLayouts into RawRows. `pages` may be a generator (one page in memory at a time).
+
+    `trace`, if given, receives what the reader skipped inside the table, for the text checks
+    (D-025): {"dropped": [...], "early_end": [...]}, positions and word counts only, never text.
+    The rows themselves do not depend on it."""
     columns = tuple(sorted(spec.columns, key=lambda c: c.x0))
     date_col = next(c for c in columns if c.role == "txn_date")
     rows, problems = [], []
     current = None
+    if trace is not None:
+        trace.setdefault("dropped", [])
+        trace.setdefault("early_end", [])
+
+    def note_drop(page, line, reason):
+        if trace is not None:
+            near = len(rows) if current is not None else len(rows) - 1
+            trace["dropped"].append({"page": page.number, "top": round(line.top, 1), "words": len(line.words),
+                                     "near_row": near if near >= 0 else None, "reason": reason})
+
     for page in pages:
         lines = group_lines(page.words, spec.line_tolerance)
         in_table = not spec.header_on_every_page
@@ -119,9 +139,11 @@ def assemble_rows(pages, spec):
 
         def flush_pending():
             nonlocal pending
-            for _, cells in pending:
+            for pline, cells in pending:
                 if current is not None:
                     _add_cells(current, cells)
+                else:
+                    note_drop(page, pline, "before_first_row")   # no row to attach it to: lost
             pending = []
 
         for line in lines:
@@ -139,13 +161,23 @@ def assemble_rows(pages, spec):
             cells = _assign(line, columns)
             if cells is None:
                 if seen_header and current is None and not rows:
+                    if trace is not None and _looks_like_row(line, date_col):
+                        note_drop(page, line, "row_outside_columns")   # a dated line that does not fit
                     continue  # stray text between header and first row
                 if not page_row_started:
                     continue  # text above the table on a page without a header row
+                if trace is not None:
+                    later = [l for l in lines[lines.index(line) + 1:] if _looks_like_row(l, date_col)]
+                    if later:     # the "footer" is followed by lines that look like transactions
+                        trace["early_end"].append({"page": page.number, "top": round(line.top, 1),
+                                                   "rows_after": len(later),
+                                                   "near_row": len(rows) if current is not None else len(rows) - 1})
                 break         # footer: table on this page has ended
             date_text = " ".join(cells.get(date_col, ()))
             if not date_text:
                 if current is None and not rows and not pending and anchor_bottom is None:
+                    if seen_header:
+                        note_drop(page, line, "before_first_row")
                     continue
                 pending.append((line, cells))
                 continue

@@ -46,7 +46,7 @@ def extract_unknown(doc, path, password, document_id=None):
             break
     _, result, report = best
     timings = dict(result.timings_ms, infer=round((t1 - t0) * 1000, 1))
-    return ExtractionResult(result.statement, result.problems, timings, result.field_sources), report
+    return ExtractionResult(result.statement, result.problems, timings, result.field_sources, result.text_trace), report
 
 
 def _adhoc_extract(doc, spec, document_id):
@@ -57,7 +57,7 @@ def _adhoc_extract(doc, spec, document_id):
     st = result.statement
     st = replace(st, header=replace(st.header, bank_name=name),
                  provenance=replace(st.provenance, template_id=None, template_version=None))
-    return ExtractionResult(st, result.problems, result.timings_ms, result.field_sources)
+    return ExtractionResult(st, result.problems, result.timings_ms, result.field_sources, result.text_trace)
 
 
 def _unruled_specs(doc):

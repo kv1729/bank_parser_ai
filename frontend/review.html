@@ -320,7 +320,11 @@ async function reextract(docId, oldExtractionId, token) {
 const WARNING_TEXT = { no_opening_balance: "no opening balance is printed, so the first row's balance cannot be checked",
                        balance_missing: "a row has no printed balance", missing_header_field: "an account field was not found",
                        no_running_balance: "the statement prints no running balance", date_out_of_order: "dates are not in order",
-                       date_outside_period: "a date lies outside the statement period" };
+                       date_outside_period: "a date lies outside the statement period",
+                       text_not_captured: "some text inside the table belongs to no row (lost)",
+                       empty_description: "a row has no description",
+                       description_start_at_end: "a description ends with words that usually start one (a line may have moved)",
+                       label_in_value: "an account value contains a label word" };
 
 function goldenBox(gold, ex) {
   const g = gold.golden;

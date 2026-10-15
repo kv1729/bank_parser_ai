@@ -607,3 +607,25 @@ The review screen will show that review beside the output. The owner gives feedb
   - additive database migrations only;
   - the heuristic proposer stays ahead of the model;
   - golden snapshots unchanged (`regress` 3 × PASS).
+
+## D-025 — Text checks: what arithmetic cannot verify (Stage 10.5, CHECKPOINT B5)
+
+- **Date:** 2026-10-15
+- **Owner:** approved the plan.
+- **Problem:** the balance chain and reconciliation prove the money, but nothing checked the text. A wrong labelling passed validation in the 10.1 benchmark, and the D-018 bug (each row's first line attached to the previous row) was found only by the owner's review.
+- **Decision:** a `text` check on every stored extraction (`core/text_checks.py`). It gives **warnings only**: these are signs, not proof.
+  - **`text_not_captured`:** a line inside the table that became part of no row, or a page whose table ended at a line followed by more dated lines. `table.assemble_rows(..., trace)` records these with positions and word counts only; the rows are unchanged.
+  - **`empty_description`:** a row without a description.
+  - **`description_start_at_end`:** a description ends with the words that start most others, or with two transaction-type words ("WDL TFR", "DEP TFR"). This means the next row's first line has moved up.
+  - **`label_in_value`:** a label word (Address, Branch, IFSC…) inside an account value.
+  - **Wiring:**
+    - added to the stored report by `pipeline._persist`; PASS becomes WARN when text is questioned, and `verified` is unchanged;
+    - template choice, agent acceptance and golden snapshots do not use it;
+    - golden approval lists text warnings with the other warnings;
+    - the self-review gains a "checked" line, or one "unsure" item per warning.
+  - Messages contain codes, rows, pages and counts, never text.
+- **Evidence** (`tests/test_text_checks.py`, real statements by a codes-only script):
+  - **No false alarms:** the 3 anonymised copies, the 2 synthetic samples and the 3 golden statements all give PASS.
+  - **Moved text** (the D-018 rule switched off on the SBI copy): all 81 changed rows are flagged on themselves or a neighbour, with no flag on an untouched row. The first row's line, which had nowhere to go, is reported as lost.
+  - **Lost text** (the description column made too narrow): caught on ICICI (table ended early) and on BOI (every row lost).
+  - `regress` 3 × PASS.

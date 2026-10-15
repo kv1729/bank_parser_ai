@@ -521,3 +521,24 @@ The review screen will show that review beside the output. The owner gives feedb
     This is a first part of CHECKPOINT B5.
   - **Memory:** on this 16 GB laptop the 9b leaves little free memory (one benchmark run was stopped by low memory). It runs only for layouts the rules cannot learn, so rarely. If memory becomes a problem, turn it off or close other apps.
 - **Rule change (owner-approved with the plan):** only a local model (Ollama on 127.0.0.1; `llm/ollama.py` refuses any other host) may see statement content, never a hosted LLM. Statement text goes to it as fenced data; its answer is schema-checked, never executed. `CLAUDE.md` is updated accordingly.
+
+### D-023 addendum — Stage 10.3: `LEARNING`, then the checked result (2026-10-15)
+
+- **Problem:**
+  - For an unruled layout, Workflow 1 stored no result and said `NEEDS_REVIEW` while the agent was still learning.
+  - Learning started *before* Workflow 1 stored its result. A fast learner's re-extraction could therefore be overtaken by the older first attempt.
+- **Decision:**
+  - **Workflow 1 reads unruled tables too,** with familiar heading words (`extract_unruled`, the 10.2 code path). It **never calls the model**, so extraction stays fast and deterministic.
+  - **New status `LEARNING`:** shown when the first result is not verified (or there is none) and the agent has started. When the agent accepts a template, the statement is re-extracted with it (the existing `submit_reextract`). Otherwise the status becomes `NEEDS_REVIEW` with the agent's reason.
+  - **Order:** store the first result → set the status → start learning.
+  - **One learning job per statement:**
+    - an upload, a review-list import or **Re-extract** during `PROCESSING`/`LEARNING` does nothing (409 for re-extract);
+    - a learner crash closes its job as `FAILED`;
+    - at app start, work interrupted by a restart is marked `NEEDS_REVIEW` ("interrupted") so it can be reprocessed (jobs do not survive restarts, CHECKPOINT G4). Only status fields change.
+  - `BANK_PARSER_LEARNING_PROPOSERS` (`heuristic,llm` by default; `llm` alone for evaluation).
+- **Evidence:**
+  - **Pipeline tests:** `LEARNING` then the learned result; an instant learner is not overtaken; a failed learner gives `NEEDS_REVIEW` with its reason; a verified first attempt stays `EXTRACTED`; a re-upload while learning starts no second job; interrupted work is marked.
+  - **Workflow 1** reads the BOI and ICICI anonymised copies without ruled lines identically, and leaves the SBI copy (no heading words) to the agent.
+  - **End to end** (`experiments/pipeline_holdout.py`): each golden statement went through the real pipeline with no templates and the agent limited to the local model.
+    - All 3 were learned by the model in 11–14 s, re-extracted with the learned template, and are identical to golden.
+    - SBI: `EXTRACTED` at once, learned in the background. BOI and ICICI: `LEARNING`, then `NEEDS_REVIEW`. They print no opening balance, the same warning their approved templates give today.

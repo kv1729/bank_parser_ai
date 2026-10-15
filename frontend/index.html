@@ -27,7 +27,7 @@
   .scroll { overflow-x:auto; }
   .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid currentColor; }
   .EXTRACTED, .PASS, .ACCEPTED { color:var(--ok); }
-  .NEEDS_REVIEW, .WARN, .HUMAN_REVIEW, .NEEDS_PASSWORD, .NEEDS_OCR, .RUNNING, .QUEUED, .PROCESSING, .SKIP { color:var(--warn); }
+  .NEEDS_REVIEW, .WARN, .HUMAN_REVIEW, .NEEDS_PASSWORD, .NEEDS_OCR, .RUNNING, .QUEUED, .PROCESSING, .LEARNING, .SKIP { color:var(--warn); }
   .FAILED, .FAIL { color:var(--bad); }
   .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:4px 24px; }
   .kv { padding:4px 0; } .kv b { display:block; font-size:12px; color:var(--muted); font-weight:600; }
@@ -127,7 +127,11 @@ async function show(id) {
   }
 
   const jd = $("#job"); jd.replaceChildren();
-  if (job) { jd.append(pill(job.status), el("span", "  " + (job.template_id || "") + (job.reason ? " — " + job.reason : "") + (job.duration_ms ? ` (${Math.round(job.duration_ms)} ms)` : ""))); }
+  if (job) {
+    const last = (job.attempts || []).slice(-1)[0];
+    const how = last && last.proposer === "llm" ? " · local AI model" : "";
+    jd.append(pill(job.status), el("span", "  " + (job.template_id || "") + how + (job.reason ? " — " + job.reason : "") + (job.duration_ms ? ` (${Math.round(job.duration_ms)} ms)` : "")));
+  }
   else jd.append(el("span", "Not needed — a known template matched this layout.", "muted"));
 
   const tb = $("#txns tbody"); tb.replaceChildren();
@@ -139,7 +143,7 @@ async function show(id) {
       el("td", t.debit ?? "", "num"), el("td", t.credit ?? "", "num"), el("td", t.balance ?? "", "num"), el("td", t.page ?? ""));
     tb.append(tr);
   }
-  const busy = ["RECEIVED", "PROCESSING"].includes(doc.status) || (job && ["QUEUED", "RUNNING"].includes(job.status));
+  const busy = ["RECEIVED", "PROCESSING", "LEARNING"].includes(doc.status) || (job && ["QUEUED", "RUNNING"].includes(job.status));
   if (busy) timer = setTimeout(() => { show(id); loadDocs(); }, 1500);
 }
 loadDocs();

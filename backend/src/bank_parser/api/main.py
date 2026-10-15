@@ -35,6 +35,7 @@ def create_app(settings=None, learning_mode="process"):
     @asynccontextmanager
     async def lifespan(app):
         state["processor"] = Processor(settings, learning_mode=learning_mode)
+        state["processor"].db.mark_interrupted()      # work from before a restart never finishes
         yield
         state["processor"].shutdown()
 
@@ -69,7 +70,9 @@ def create_app(settings=None, learning_mode="process"):
         vault.put(stored.document_id, password)
         doc = p.db.get_document(stored.document_id)
         done = doc["status"] in (DocStatus.EXTRACTED,)
-        if not done or reprocess or (doc["status"] == DocStatus.NEEDS_PASSWORD and password):
+        # Already being processed or learned: a second upload must not start a second learning job.
+        busy = doc["status"] in (DocStatus.PROCESSING, DocStatus.LEARNING)
+        if not busy and (not done or reprocess or (doc["status"] == DocStatus.NEEDS_PASSWORD and password)):
             p.submit(stored.document_id, password or None)
         return {"document_id": stored.document_id, "duplicate": stored.already_existed,
                 "size_bytes": stored.size_bytes}
@@ -139,7 +142,8 @@ def create_app(settings=None, learning_mode="process"):
         password = sources.default_password(source_dir, path)
         vault.put(stored.document_id, password)
         doc = p.db.get_document(stored.document_id)
-        if doc["status"] not in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW) or not p.db.latest_extraction(stored.document_id):
+        settled = doc["status"] in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW) and p.db.latest_extraction(stored.document_id)
+        if not settled and doc["status"] not in (DocStatus.PROCESSING, DocStatus.LEARNING):
             p.submit(stored.document_id, password)
         return {"document_id": stored.document_id, "duplicate": stored.already_existed}
 
@@ -147,7 +151,9 @@ def create_app(settings=None, learning_mode="process"):
     def reprocess(document_id: str):
         """Extract again with the current code and templates. The result is a new extraction;
         reviews stay attached to the extraction they were made against."""
-        require_document(document_id)
+        doc = require_document(document_id)
+        if doc["status"] in (DocStatus.PROCESSING, DocStatus.LEARNING):
+            raise HTTPException(409, "this statement is still being processed or learned; try again when it is done")
         password = vault.get(document_id)
         if password is None:
             for s in sources.list():

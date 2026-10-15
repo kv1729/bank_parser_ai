@@ -121,6 +121,20 @@ class Database:
         with self.connect() as c:
             c.execute(f"UPDATE documents SET {cols} WHERE id = ?", (*fields.values(), doc_id))
 
+    def mark_interrupted(self):
+        """At app start: work that was running when the app stopped will never finish (jobs do not
+        survive a restart, CHECKPOINT G4). Mark it so the statement can be processed again.
+        Only status fields change; extractions and reviews are kept. Returns the documents marked."""
+        now = utcnow()
+        with self.connect() as c:
+            ids = [r[0] for r in c.execute("SELECT id FROM documents WHERE status IN ('PROCESSING', 'LEARNING')")]
+            c.execute("""UPDATE documents SET status = 'NEEDS_REVIEW', updated_at = ?,
+                         error = 'interrupted: the app stopped while this statement was being processed or learned; reprocess it'
+                         WHERE status IN ('PROCESSING', 'LEARNING')""", (now,))
+            c.execute("""UPDATE template_jobs SET status = 'FAILED', reason = 'interrupted: the app stopped', updated_at = ?
+                         WHERE status IN ('QUEUED', 'RUNNING')""", (now,))
+        return ids
+
     def get_document(self, doc_id):
         with self.connect() as c:
             row = c.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()

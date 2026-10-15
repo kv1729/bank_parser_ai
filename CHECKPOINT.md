@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-15 (Stage 10.1–10.2 done, D-023). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-15 (Stage 10.1–10.3 done, D-023). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -17,12 +17,12 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | A. Extraction core | 9 | 9 | ✅ |
 | B. Self-check of each extraction | 4 | 6 | 🟡 |
 | C. Regression safety (golden set) | 6 | 6 | ✅ |
-| D. AI agent (learning new layouts) | 4 | 9 | 🟡 |
+| D. AI agent (learning new layouts) | 5 | 9 | 🟡 |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **29** | **53** | **55%** |
+| **Total** | **30** | **53** | **57%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -70,7 +70,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | D2 | Recipe-based proposer for ruled tables | ✅ | `learning/proposers.py` | 4 |
 | D3 | Local open-source model installed and selected (≤ 3 candidates, ≤ 2 tested) | ✅ | D-023: qwen3.5:9b, 10/10 identical; `experiments/llm_choice.py` | 10 |
 | D4 | AI proposer: reads the statement and proposes a template | ✅ | D-023: learned all 3 golden statements from scratch, identical; `experiments/llm_holdout.py`, `tests/test_llm_proposer.py` | 10 |
-| D5 | AI fallback extraction when no recipe or template fits; status `LEARNING`, then the result appears | ⬜ | | 10 |
+| D5 | AI fallback extraction when no recipe or template fits; status `LEARNING`, then the result appears | ✅ | D-023 addendum: `experiments/pipeline_holdout.py` (3/3 identical to golden, 11–14 s), `tests/test_pipeline.py` | 10 |
 | D6 | Every AI result passes the same self-check (B) and regression gate (C) | ⬜ | | 10 |
 | D7 | Learns from human corrections: flags and approvals become examples for the agent | ⬜ | | 10 |
 | D8 | Agent measured on held-out statements (success rate, time, re-tries) | ⬜ | | 10 |

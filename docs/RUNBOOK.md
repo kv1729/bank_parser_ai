@@ -87,6 +87,7 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 ### Upload page (`/`)
 1. Choose a PDF; type its password if it has one.
 2. Click **Upload**; the status updates by itself until `EXTRACTED`, `NEEDS_REVIEW`, `NEEDS_PASSWORD` or `NEEDS_OCR`.
+3. **`LEARNING`** means the layout is new and the first attempt could not be verified. The template agent is learning it in the background, using the local AI model if the rules cannot, which can take a minute. Leave the page open: the checked result replaces the status by itself (`EXTRACTED`, or `NEEDS_REVIEW` with the agent's reason if it could not learn the layout). While a statement is `LEARNING`, uploading it again or **Re-extract** does nothing (one learning job per statement). If the app is stopped meanwhile, the statement shows `NEEDS_REVIEW` ("interrupted") after the restart: reprocess it.
 
 ### Review page (`/review`)
 1. **Left:** pick a PDF. Files from `sample_data\` are imported and processed on first click; password-protected ones use `sample_data\.pdf_password`, otherwise the page asks for the password (kept in memory only).

@@ -109,7 +109,7 @@ class TemplateAgent:
         self.regression_docs = list(regression_docs)
         self.budget = budget
         self.backend = backend
-        self.proposers = proposers or [HeuristicProposer(), LLMProposer()]
+        self.proposers = list(proposers) if proposers is not None else [HeuristicProposer(), LLMProposer()]
         self._texts = detection_texts if detection_texts is not None else {}
 
     def _regression_text(self, rd):

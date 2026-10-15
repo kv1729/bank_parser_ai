@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`) and 10.2 (AI template proposer) are done (D-023). **Next:** 10.3, AI fallback extraction. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) are done (D-023). **Next:** 10.4, agent self-review. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -168,7 +168,12 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
     - otherwise the local model labels each column from its heading and sample values;
     - labels are checked against the content, debit/credit are swapped once if the balance chain fails, then the agent's usual gates run.
     - Hold-out: the agent with only the AI proposer learned all 3 golden statements from scratch, identical to golden.
-  - [ ] AI fallback extraction: status `LEARNING`, then the self-checked result appears; known layouts stay on the fast path.
+  - [x] **10.3 AI fallback extraction** (D-023 addendum):
+    - Workflow 1 also reads unruled tables, never with the model;
+    - an unverified first result shows `LEARNING`;
+    - once the agent learns the layout, the statement is re-extracted and the checked result appears by itself;
+    - one learning job per statement, and interrupted work is marked after a restart.
+    - End to end: all 3 golden statements learned by the local model in 11–14 s, identical to golden.
   - [ ] Text checks beyond arithmetic (CHECKPOINT B5).
   - [ ] Agent self-review per statement (what it checked, what it is unsure of, confidence per field), shown in the review screen; the owner gives feedback on the agent's review as well as the output (D-020).
   - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
@@ -177,7 +182,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Sub-steps:**
   - 10.1 model choice ✅
   - 10.2 AI template proposer ✅
-  - 10.3 AI fallback extraction
+  - 10.3 AI fallback extraction ✅
   - 10.4 agent self-review
   - 10.5 text checks (started: content checks on column labels)
   - 10.6 US formats

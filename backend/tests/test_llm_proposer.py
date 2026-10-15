@@ -196,3 +196,21 @@ def test_labels_that_do_not_fit_the_values_are_rejected(swap):
     roles[a], roles[b] = roles[b], roles[a]
     with pytest.raises(llm_view.AnswerError):
         llm_view.layout_from_roles(doc, view, roles, "columns")
+
+
+# --- Workflow 1 on unruled tables (Stage 10.3): no model, extracted at once --------------------
+
+@pytest.mark.parametrize("name", ["boi-23f4f42a", "icici-ec27b806"])
+def test_workflow_1_reads_unruled_tables_with_familiar_headings(name):
+    from bank_parser.extraction.unknown import extract_unruled
+    doc, _, expected = _copy(name)
+    result, report = extract_unruled(doc)
+    assert result is not None
+    assert _core(snapshot(statement_to_dict(result.statement))) == _core(expected)
+    assert report.status.value == "WARN"          # no opening balance printed, as in the original
+
+
+def test_workflow_1_leaves_tables_without_heading_words_to_the_agent():
+    from bank_parser.extraction.unknown import extract_unruled
+    doc, _, _ = _copy("sbi-d2e542a8")
+    assert extract_unruled(doc) == (None, None)

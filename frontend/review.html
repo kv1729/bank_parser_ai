@@ -150,8 +150,9 @@ async function show(docId, token = ++showToken) {
   if (!r.ok || token !== showToken) return;           // a newer selection replaced this one
   const { document: doc, extraction: ex } = await r.json();
   loadSources(docId);
-  if (["RECEIVED", "PROCESSING"].includes(doc.status) || (!ex && doc.status !== "NEEDS_PASSWORD" && doc.status !== "FAILED" && doc.status !== "NEEDS_OCR")) {
-    $("#output").replaceChildren(el("div", "Processing…", "empty"));
+  if (["RECEIVED", "PROCESSING", "LEARNING"].includes(doc.status) || (!ex && doc.status !== "NEEDS_PASSWORD" && doc.status !== "FAILED" && doc.status !== "NEEDS_OCR" && doc.status !== "NEEDS_REVIEW")) {
+    $("#output").replaceChildren(el("div", doc.status === "LEARNING"
+      ? "Learning this layout… the checked result will appear here (this can take a minute)." : "Processing…", "empty"));
     clearTimeout(pollTimer);
     pollTimer = setTimeout(() => { if (token === showToken) show(docId, token); }, 1200);
   }

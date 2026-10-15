@@ -22,7 +22,7 @@ from bank_parser.pdf import open_pdf
 from bank_parser.storage import Database
 from bank_parser.templates import TemplateRegistry
 
-CORE = ("date", "value_date", "description", "reference", "debit", "credit", "balance")
+CORE = ("txn_date", "value_date", "description", "reference", "debit", "credit", "balance")
 
 
 def core(statement):

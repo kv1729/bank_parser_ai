@@ -31,6 +31,7 @@ from bank_parser.core.schema import statement_to_dict
 from bank_parser.storage import Database, DocumentStore
 from bank_parser.templates import TemplateRegistry
 from bank_parser.core.validation import report_to_dict, validate_statement
+from bank_parser.self_review import build_self_review
 
 log = logging.getLogger("bank_parser")   # never log statement content, names or numbers
 
@@ -193,8 +194,12 @@ class Processor:
         if cls is not None and cls.needs_ocr_pages:
             problems.append({"code": "pages_need_ocr", "message": f"pages without text: {list(cls.needs_ocr_pages)}",
                              "page": None, "row_index": None})
-        self.db.add_extraction(document_id, workflow, strategy, template_id, report_to_dict(report), data,
-                               problems, dict(result.timings_ms, **timings))
+        report_d = report_to_dict(report)
+        template = self.registry.get(template_id) if template_id else None
+        job = self.db.latest_template_job(document_id) if template is not None else None
+        review = build_self_review(data, report_d, result.field_sources, template, job)
+        self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
+                               problems, dict(result.timings_ms, **timings), review)
 
     def _finish(self, document_id, report, result):
         ok = report.verified and not result.problems

@@ -50,6 +50,16 @@
   button.secondary:disabled { opacity:.5; cursor:default; }
   #save-state.ok { color:var(--ok); } #save-state.bad { color:var(--bad); font-weight:600; }
   tr.issue td:not(.cb) { box-shadow: inset 3px 0 0 var(--warn); }
+  .selfrev { margin:10px 0; padding:8px 10px; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:6px; }
+  .selfrev h3 { margin:8px 0 4px; font-size:13px; }
+  .selfrev ul { margin:2px 0 6px; padding-left:18px; }
+  .selfrev li { margin:3px 0; }
+  .selfrev .verdict { margin-left:6px; white-space:nowrap; }
+  .selfrev .verdict button { padding:1px 7px; margin-left:3px; border:1px solid var(--line); border-radius:5px; background:none; color:inherit; cursor:pointer; font-size:12px; }
+  .selfrev .verdict button.on { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .selfrev input.note { width:min(320px, 90%); margin:2px 0 0 0; font-size:12px; }
+  .conf { font-size:11px; padding:0 5px; border-radius:8px; border:1px solid currentColor; white-space:nowrap; }
+  .conf.high { color:var(--ok); } .conf.medium { color:var(--muted); } .conf.low { color:var(--bad); } .conf.missing { color:var(--warn); }
   tr.txn { cursor:pointer; }
   .pill { display:inline-block; padding:0 7px; border-radius:999px; font-size:11px; border:1px solid currentColor; }
   .PASS, .EXTRACTED { color:var(--ok); } .WARN, .NEEDS_REVIEW, .PROCESSING, .RECEIVED, .NEEDS_PASSWORD { color:var(--warn); }
@@ -211,7 +221,9 @@ async function renderOutput(doc, ex, token) {
   const review = saved.extraction_id === ex.id ? saved.review : null;
   const txnCount = ((ex.statement || {}).transactions || []).length;
   current = { docId: doc.id, extractionId: ex.id, txnCount, flags: new Set(review ? review.flags : []),
-              missing: new Set(review ? review.missing || [] : []), remarks: review ? review.remarks : "" };
+              missing: new Set(review ? review.missing || [] : []), remarks: review ? review.remarks : "",
+              feedback: Object.assign({}, review ? review.agent_feedback || {} : {}),
+              sr: saved.extraction_id === ex.id ? saved.self_review : null };
   dirty = false;
 
   const issueRows = new Set();
@@ -244,6 +256,7 @@ async function renderOutput(doc, ex, token) {
   }
 
   out.append(goldenBox(gold, ex));
+  if (current.sr) out.append(selfReviewBox(current.sr, saved.extraction_id === ex.id ? saved.calibration : null));
 
   out.append(el("h2", "Account & statement"));
   const MONEY = new Set(["opening_balance", "closing_balance", "total_debits", "total_credits"]);
@@ -257,7 +270,13 @@ async function renderOutput(doc, ex, token) {
   out.append(el("h2", `Transactions (${txns.length})`));
   out.append(el("div", "Amber edge = row named by a validation issue. Tick a row if any of its values is wrong. Rows the extractor missed: describe them in the remarks.", "muted legend"));
   const t = el("table", null, "txns");
-  const hr = el("tr"); for (const c of ["✗", "#", "Date", "Description", "Ref", "Debit", "Credit", "Balance", "Pg"]) hr.append(el("th", c));
+  const hr = el("tr");
+  const COLS = { Date: "txn_date", Description: "description", Ref: "reference", Debit: "debit", Credit: "credit", Balance: "balance" };
+  for (const c of ["✗", "#", "Date", "Description", "Ref", "Debit", "Credit", "Balance", "Pg"]) {
+    const th = el("th", c);
+    if (COLS[c]) { const tag = confTag("transactions." + COLS[c]); if (tag) th.append(el("br"), tag); }
+    hr.append(th);
+  }
   const thead = el("thead"); thead.append(hr); t.append(thead);
   const tb = el("tbody");
   for (const x of txns) {
@@ -346,12 +365,76 @@ function approveButton(doc, ex, gold, token) {
   return btn;
 }
 
+// --- the system's self-review (Stage 10.4, D-024) -------------------------------------------
+const CONF_TEXT = { high: "high", medium: "medium", low: "low", missing: "missing" };
+function confTag(key) {
+  const f = current.sr && current.sr.fields && current.sr.fields[key];
+  if (!f) return null;
+  const tag = el("span", CONF_TEXT[f.level] || f.level, "conf " + f.level);
+  tag.title = "Agent's confidence: " + f.reason;
+  return tag;
+}
+
+function selfReviewBox(sr, cal) {
+  const box = el("div", null, "selfrev");
+  box.append(el("strong", "Agent's self-review"), el("span", "  " + sr.summary, "muted"));
+  const L = sr.learning;
+  if (L && L.template) {
+    const how = L.proposer ? `learned by ${L.proposer}` + (L.columns ? `, columns named ${L.columns}` : "") + (L.model ? ` (${L.model})` : "")
+                           : `made ${L.made_by}`;
+    box.append(el("div", `Template ${L.template}: ${how}.`, "muted"));
+  } else if (L) box.append(el("div", "No template yet: " + L.proposer + ".", "muted"));
+  if (sr.checked.length) {
+    box.append(el("h3", "What I checked"));
+    const ul = el("ul"); for (const c of sr.checked) ul.append(el("li", c)); box.append(ul);
+  }
+  if (sr.unsure.length) {
+    box.append(el("h3", "What I'm unsure of — do you agree?"));
+    const ul = el("ul");
+    for (const u of sr.unsure) {
+      const li = el("li", u.text);
+      const v = el("span", null, "verdict");
+      const fb = () => current.feedback[u.id] || null;
+      const btns = {};
+      for (const [val, label] of [["agree", "Agree"], ["disagree", "Disagree"]]) {
+        const b = el("button", label); b.type = "button";
+        b.title = val === "agree" ? "Yes, this deserved a look (or it was right to doubt it)" : "No, this worry was wrong or not useful";
+        b.onclick = () => {
+          const cur = fb();
+          if (cur && cur.verdict === val) delete current.feedback[u.id];
+          else current.feedback[u.id] = { verdict: val, note: cur ? cur.note : "" };
+          paint(); scheduleSave();
+        };
+        btns[val] = b; v.append(b);
+      }
+      const note = el("input", null, "note"); note.type = "text"; note.maxLength = 500; note.placeholder = "optional note";
+      note.oninput = () => {
+        const cur = fb() || { verdict: "agree", note: "" };
+        current.feedback[u.id] = { verdict: cur.verdict, note: note.value }; paint(); scheduleSave();
+      };
+      const paint = () => { const cur = fb(); for (const k in btns) btns[k].classList.toggle("on", !!cur && cur.verdict === k); if (document.activeElement !== note) note.value = cur ? cur.note : ""; };
+      paint();
+      li.append(v, el("br"), note);
+      ul.append(li);
+    }
+    box.append(ul);
+  }
+  if (cal) {
+    const bits = [];
+    if (cal.wrong_but_rated_high.length) bits.push(`${cal.wrong_but_rated_high.length} field(s) you marked wrong or missing were rated high: ${cal.wrong_but_rated_high.join(", ")}`);
+    if (cal.rows_marked_wrong_not_flagged.length) bits.push(`${cal.rows_marked_wrong_not_flagged.length} row(s) you marked wrong were not among the things I was unsure of`);
+    box.append(el("div", bits.length ? "Calibration: " + bits.join("; ") + "." : "Calibration: nothing you marked wrong was rated high.", bits.length ? "" : "muted"));
+  }
+  return box;
+}
+
 function fieldTable(rows) {
   const t = el("table");
   for (const [key, label, value] of rows) {
     const tr = el("tr");
     const empty = value == null || value === "";
-    tr.append(stateCell(key, tr, empty), el("td", label, "muted"), el("td", empty ? "—" : value));
+    const conf = el("td"); const tag = confTag(key); if (tag) conf.append(tag);
+    tr.append(stateCell(key, tr, empty), el("td", label, "muted"), el("td", empty ? "—" : value), conf);
     t.append(tr);
   }
   return t;
@@ -404,8 +487,10 @@ async function flushSave() { if (dirty && current) await save(); }
 async function save() {
   clearTimeout(saveTimer); saveTimer = null;
   const docId = current.docId;
-  const body = JSON.stringify({ extraction_id: current.extractionId, flags: [...current.flags],
-                                missing: [...current.missing], remarks: current.remarks });
+  const payload = { extraction_id: current.extractionId, flags: [...current.flags],
+                    missing: [...current.missing], remarks: current.remarks };
+  if (current.sr) payload.agent_feedback = current.feedback;
+  const body = JSON.stringify(payload);
   const btn = $("#save-btn"); if (btn) btn.disabled = true;
   updateCounts("Saving…");
   try {

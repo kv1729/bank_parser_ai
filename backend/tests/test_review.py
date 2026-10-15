@@ -81,7 +81,9 @@ def test_review_round_trip_and_validation(client):
     doc_id = _import(client, SBI_PDF.name)
     body = _wait(client, doc_id)
     ex_id = body["extraction"]["id"]
-    assert client.get(f"/api/documents/{doc_id}/review").json() == {"extraction_id": ex_id, "review": None, "previous": None}
+    got = client.get(f"/api/documents/{doc_id}/review").json()
+    assert {k: got[k] for k in ("extraction_id", "review", "previous")} == {"extraction_id": ex_id, "review": None, "previous": None}
+    assert got["self_review"]["summary"] and got["calibration"] is None      # no owner marks yet
 
     payload = {"extraction_id": ex_id, "flags": ["header.account_holder_address", "txn.14", "txn.14"],
                "remarks": "Row 15 description looks truncated."}

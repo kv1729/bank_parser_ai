@@ -20,7 +20,7 @@ from bank_parser.golden import password_candidates, reopen
 from bank_parser.pipeline import Processor
 from bank_parser.storage import Database
 
-CORE = ("date", "value_date", "description", "reference", "debit", "credit", "balance")
+CORE = ("txn_date", "value_date", "description", "reference", "debit", "credit", "balance")
 
 
 def core(statement):

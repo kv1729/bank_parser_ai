@@ -43,7 +43,7 @@ from bank_parser.storage import Database
 from bank_parser.templates import template_from_dict
 
 FIXTURES = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "layouts"
-CORE = ("date", "value_date", "description", "reference", "debit", "credit", "balance")
+CORE = ("txn_date", "value_date", "description", "reference", "debit", "credit", "balance")
 
 # Other banks' heading wording, per role (hard variants).
 SYNONYMS = {

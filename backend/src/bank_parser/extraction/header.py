@@ -143,13 +143,15 @@ def _block_text(page, rule, tolerance, max_up=2, max_down=6):
     return None
 
 
-def apply_header_rules(rules, pages_by_number, page_count, default_date_formats, tolerance=3.0):
+def apply_header_rules(rules, pages_by_number, page_count, default_date_formats, tolerance=3.0, sources=None):
     """
     Returns ({target: value}, [Problem]). The first rule that yields a value
     for a target wins; later rules for the same target are fallbacks.
+    `sources`, if given, receives {target: {"rule": index, "kind": ..., "page": n}}:
+    which rule found each value (used by the self-review, D-024; values are not recorded).
     """
     values, problems = {}, []
-    for rule in rules:
+    for index, rule in enumerate(rules):
         if all(t in values for t in rule.targets):
             continue
         fmts = rule.date_formats or default_date_formats
@@ -181,5 +183,7 @@ def apply_header_rules(rules, pages_by_number, page_count, default_date_formats,
                     continue
                 if v is not None:
                     values[target] = v
+                    if sources is not None:
+                        sources[target] = {"rule": index, "kind": rule.kind, "page": n}
             break
     return values, problems

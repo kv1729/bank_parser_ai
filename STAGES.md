@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) are done (D-023). **Next:** 10.4, agent self-review. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) and 10.4 (self-review) are done (D-023, D-024). **Next:** 10.5, text checks. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: the first feedback the agent gets. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -175,7 +175,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
     - one learning job per statement, and interrupted work is marked after a restart.
     - End to end: all 3 golden statements learned by the local model in 11–14 s, identical to golden.
   - [ ] Text checks beyond arithmetic (CHECKPOINT B5).
-  - [ ] Agent self-review per statement (what it checked, what it is unsure of, confidence per field), shown in the review screen; the owner gives feedback on the agent's review as well as the output (D-020).
+  - [x] **10.4 Agent self-review** (D-024): for every extraction, what was checked, what is unsure (with ids), a confidence per field (high / medium / low / missing, with the reason) and how the template was made. Deterministic, never values. Shown in `/review` with Agree/Disagree and a note per item, plus a calibration line comparing the owner's marks with the ratings.
   - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
   - [ ] Human flags and approvals stored as training examples for the agent.
   - [ ] Evaluation on held-out statements: success rate, time, re-tries.
@@ -183,7 +183,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - 10.1 model choice ✅
   - 10.2 AI template proposer ✅
   - 10.3 AI fallback extraction ✅
-  - 10.4 agent self-review
+  - 10.4 agent self-review ✅
   - 10.5 text checks (started: content checks on column labels)
   - 10.6 US formats
   - 10.7 feedback as training examples

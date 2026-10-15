@@ -542,3 +542,53 @@ The review screen will show that review beside the output. The owner gives feedb
   - **End to end** (`experiments/pipeline_holdout.py`): each golden statement went through the real pipeline with no templates and the agent limited to the local model.
     - All 3 were learned by the model in 11–14 s, re-extracted with the learned template, and are identical to golden.
     - SBI: `EXTRACTED` at once, learned in the background. BOI and ICICI: `LEARNING`, then `NEEDS_REVIEW`. They print no opening balance, the same warning their approved templates give today.
+
+### D-023 correction — dates were not compared in the 10.1–10.3 evidence (2026-10-15)
+
+- **What went wrong:** the comparisons behind "identical" used the key `date`, but transactions store `txn_date`. Transaction dates were therefore not compared, in `experiments/llm_choice.py`, `llm_holdout.py`, `pipeline_holdout.py` and the "core" tests in `tests/test_llm_proposer.py`. Money, descriptions, references and value dates were compared correctly.
+- **Fixed and re-verified with dates included:**
+  - the deterministic check: all 10 benchmark cases are identical with the correct roles, and the 9b's roles equalled them on all 10;
+  - `llm_holdout.py` and `pipeline_holdout.py`: 3/3 identical to golden;
+  - the tests pass.
+- **Conclusions unchanged.**
+
+## D-024 — The system's self-review of each statement, and the owner's verdicts on it (Stage 10.4)
+
+- **Date:** 2026-10-15
+- **Owner:** approved the plan (requirement from D-020: the agent reviews its own work, and the owner reviews that review).
+- **Problem:** the review screen showed the output and the validation checks, but not *why* a value deserves trust, which values no check covers (descriptions, names), or how the layout was learned. Stage 11 (autonomy) needs a record of where the system's confidence matched the owner.
+- **Decision:**
+  - **Deterministic, not written by the model.** `self_review.build_self_review` uses only:
+    - the validation report;
+    - which rule found each account field (`apply_header_rules(..., sources)`, recorded in `ExtractionResult.field_sources`);
+    - the template's provenance;
+    - the agent job.
+
+    It cannot claim a check that never ran, and it costs nothing. It uses field names, counts, row numbers and check codes, never values or issue messages, which can contain amounts.
+  - **Contents:**
+    - summary;
+    - **what I checked:** balance chain on N of M rows, printed figures matched, dates in order and inside the period;
+    - **what I'm unsure of:** each item with an id and a field;
+    - **confidence per field:**
+      - `high`: an independent check confirms it;
+      - `medium`: a rule found it, nothing independent confirms it;
+      - `low`: a check questioned it;
+      - `missing`.
+    - **how the template was made:** rules, heading words or the local model with the model name; debit/credit decided by the balance chain.
+  - **Storage:** additive columns `extractions.self_review_json` (written when the extraction is stored; older ones are computed on request, with field sources "not recorded") and `reviews.agent_feedback_json` (the owner's Agree/Disagree plus an optional note per item; only listed item ids accepted; saving a review without feedback keeps the stored verdicts).
+  - **Calibration:** `GET /review` compares the owner's marks with the confidence ratings: fields marked wrong or missing that were rated high, and rows marked wrong that were not among the unsure items. Computed, not stored. This is the record Stage 11 builds on.
+- **Evidence:**
+  - `tests/test_self_review.py`:
+    - money high and text medium on a verified statement;
+    - no statement value appears in the self-review;
+    - row 1 flagged when no opening balance is printed;
+    - a broken balance rates that row low;
+    - an unlabelled-position field is listed with its reason;
+    - a model-learned template says so;
+    - calibration counts;
+    - the feedback round trip, including refusals.
+  - **On the 3 real statements:**
+    - money verified on 17/18, 81/81 and 35/36 rows (row 1 of ICICI and BOI has no opening balance);
+    - SBI also matches all six printed figures;
+    - the unsure items name the descriptions and the account fields read by position or by a general rule.
+  - `regress` 3 × PASS: the output is unchanged.

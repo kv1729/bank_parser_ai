@@ -130,3 +130,25 @@ def validate_review(statement, flags, remarks, missing=()):
             raise ReviewError(f"only header and summary fields can be marked missing, not {k!r}")
     missing = sorted(set(missing))
     return sorted(set(flags) - set(missing)), remarks, missing
+
+
+MAX_FEEDBACK_NOTE_CHARS = 500
+VERDICTS = ("agree", "disagree")
+
+
+def validate_agent_feedback(feedback, item_ids):
+    """The owner's verdicts on the self-review's items (D-024): {item id: {"verdict", "note"}}.
+    Only items the self-review lists; a verdict of agree/disagree; a short optional note."""
+    if not isinstance(feedback, dict):
+        raise ReviewError("agent_feedback must be an object")
+    out = {}
+    for item, v in feedback.items():
+        if item not in item_ids:
+            raise ReviewError(f"unknown self-review item {item!r}")
+        if not isinstance(v, dict) or v.get("verdict") not in VERDICTS:
+            raise ReviewError(f"verdict for {item!r} must be one of {', '.join(VERDICTS)}")
+        note = v.get("note", "")
+        if not isinstance(note, str) or len(note) > MAX_FEEDBACK_NOTE_CHARS:
+            raise ReviewError(f"note for {item!r} must be text of at most {MAX_FEEDBACK_NOTE_CHARS} characters")
+        out[item] = {"verdict": v["verdict"], "note": note}
+    return out

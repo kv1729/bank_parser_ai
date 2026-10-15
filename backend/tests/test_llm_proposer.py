@@ -24,7 +24,7 @@ from tests.helpers import SBI_PDF
 BUDGET = LearningBudget(max_llm_tokens=50_000)
 LAYOUTS = Path(__file__).parent / "fixtures" / "layouts"
 SBI_ROLES = ["txn_date", "value_date", "description", "reference", "debit", "credit", "balance"]
-CORE = ("date", "value_date", "description", "reference", "debit", "credit", "balance")
+CORE = ("txn_date", "value_date", "description", "reference", "debit", "credit", "balance")
 
 
 class FakeClient:

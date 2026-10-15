@@ -132,6 +132,17 @@ class Processor:
 
     # --- Workflow 1 -------------------------------------------------------------
     def process(self, document_id, password=None):
+        """Workflow 1. An unexpected error ends as FAILED, never as PROCESSING forever: uploads and
+        re-extraction are refused while a statement is PROCESSING (one job per statement)."""
+        try:
+            return self._process(document_id, password)
+        except Exception as e:                       # never echo exception text: it may contain content
+            log.exception("extraction failed for document %s", document_id[:12])
+            self.db.update_document(document_id, status=DocStatus.FAILED,
+                                    error=f"unexpected error during extraction ({type(e).__name__}); reprocess it")
+            return DocStatus.FAILED
+
+    def _process(self, document_id, password=None):
         s, db = self.settings, self.db
         path = self.store.path_for(document_id)
         db.update_document(document_id, status=DocStatus.PROCESSING, error=None)
@@ -197,6 +208,8 @@ class Processor:
         report_d = report_to_dict(report)
         template = self.registry.get(template_id) if template_id else None
         job = self.db.latest_template_job(document_id) if template is not None else None
+        if job and job.get("template_id") != template_id:
+            job = None                  # this document's job did not make this template
         review = build_self_review(data, report_d, result.field_sources, template, job)
         self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
                                problems, dict(result.timings_ms, **timings), review)
@@ -231,27 +244,36 @@ class Processor:
                 self.registry.reload()
                 # Re-extract with the new template so the stored result reflects the reusable path.
                 self.submit_reextract(document_id, password, template_id)
-            elif self.db.get_document(document_id)["status"] == DocStatus.LEARNING:
+            else:
                 job = self.db.latest_template_job(document_id) or {}
-                why = job.get("reason") or status
-                self.db.update_document(document_id, status=DocStatus.NEEDS_REVIEW,
-                                        error=f"the layout could not be learned automatically ({why}); review required")
+                self._stop_learning(document_id, job.get("reason") or status)
             if self.on_learning_done:
                 self.on_learning_done(document_id, status, template_id)
         finally:
             with self._lock:
                 self._inflight -= 1
 
+    def _stop_learning(self, document_id, why):
+        """A statement still waiting for learning gets NEEDS_REVIEW with the reason (never LEARNING forever)."""
+        if self.db.get_document(document_id)["status"] == DocStatus.LEARNING:
+            self.db.update_document(document_id, status=DocStatus.NEEDS_REVIEW,
+                                    error=f"the layout could not be learned automatically ({why}); review required")
+
     def submit_reextract(self, document_id, password, template_id):
         def job():
-            template = self.registry.get(template_id)
-            if template is None:
-                return
-            with open_pdf(self.store.path_for(document_id), password, self.settings.pdf_backend) as doc:
-                result = extract_with_template(doc, template, document_id, strategy="template")
-            report = validate_statement(result.statement)
-            self._persist(document_id, "known_template", "template", template_id, result, report, {})
-            self._finish(document_id, report, result)
+            try:
+                template = self.registry.get(template_id)
+                if template is None:
+                    self._stop_learning(document_id, "the learned template could not be loaded")
+                    return
+                with open_pdf(self.store.path_for(document_id), password, self.settings.pdf_backend) as doc:
+                    result = extract_with_template(doc, template, document_id, strategy="template")
+                report = validate_statement(result.statement)
+                self._persist(document_id, "known_template", "template", template_id, result, report, {})
+                self._finish(document_id, report, result)
+            except Exception as e:                   # never echo exception text: it may contain content
+                log.exception("re-extraction failed for document %s", document_id[:12])
+                self._stop_learning(document_id, f"re-extraction with the learned template failed: {type(e).__name__}")
         fut = self._extract_pool.submit(job)
         with self._lock:
             self._futures.append(fut)

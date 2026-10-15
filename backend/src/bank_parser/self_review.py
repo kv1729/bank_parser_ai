@@ -100,9 +100,13 @@ def build_self_review(statement, report, field_sources=None, template=None, job=
     for col in MONEY_COLUMNS:
         fields[f"transactions.{col}"] = {"level": money[0], "reason": money[1]}
     if "no_opening_balance" in chain_codes and n:
-        _item(unsure, "row:0:no_opening_balance", "txn.0",
-              "Row 1's balance is taken as printed: the statement prints no opening balance, so row 1 cannot be "
-              "checked against one.")
+        # The row that cannot be checked is the oldest one: the last printed on newest-first statements.
+        dates = [t.get("txn_date") for t in txns if t.get("txn_date")]
+        oldest = txns[-1] if len(dates) >= 2 and dates[0] > dates[-1] else txns[0]
+        r = oldest.get("row_index", 0)
+        _item(unsure, f"row:{r}:no_opening_balance", f"txn.{r}",
+              f"Row {r + 1}'s balance is taken as printed: the statement prints no opening balance, so its oldest "
+              "row cannot be checked against one.")
     for r in sorted(set(bad_money) | set(bad_rows)):
         codes = [i["code"] for i in (chain or {}).get("issues", []) + (rows or {}).get("issues", [])
                  if i.get("row_index") == r and i["code"] in ROW_PROBLEMS]

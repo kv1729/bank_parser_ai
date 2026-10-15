@@ -122,3 +122,15 @@ def test_owner_feedback_round_trip(tmp_path):
         assert client.put(f"/api/documents/{doc_id}/review",
                           json={**base, "agent_feedback": {item: {"verdict": "maybe"}}}).status_code == 400
         assert client.get(f"/api/documents/{doc_id}/review").json()["calibration"]["feedback"] == 1
+
+
+def test_newest_first_statement_points_at_its_oldest_row():
+    """BOI prints newest first: without an opening balance, the row that cannot be checked is the last one."""
+    _, doc = load_layout(LAYOUTS / "boi-23f4f42a" / "layout.json")
+    t = template_from_dict(json.loads((LAYOUTS / "boi-23f4f42a" / "template.json").read_text(encoding="utf-8")))
+    res = extract_with_template(doc, t)
+    st = statement_to_dict(res.statement)
+    sr = build_self_review(st, report_to_dict(validate_statement(res.statement)), res.field_sources, t)
+    last = st["transactions"][-1]["row_index"]
+    item = next(u for u in sr["unsure"] if u["id"].endswith(":no_opening_balance"))
+    assert item["field"] == f"txn.{last}" and f"Row {last + 1}'s" in item["text"]

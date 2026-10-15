@@ -592,3 +592,18 @@ The review screen will show that review beside the output. The owner gives feedb
     - SBI also matches all six printed figures;
     - the unsure items name the descriptions and the account fields read by position or by a general rule.
   - `regress` 3 × PASS: the output is unchanged.
+
+### Code review of Stage 10.1–10.4 (2026-10-15, after PRs #13 and #14 were merged)
+
+- **Findings, all fixed on `stage-10-review-fixes`, each with a regression test:**
+  1. **A Workflow 1 crash left the statement `PROCESSING` forever.** Since 10.3, uploads and re-extraction are refused while `PROCESSING`, so the statement was blocked until a restart. Now `process` ends as `FAILED`, with the error type only (never its text, which may contain content).
+  2. **An accepted template that could not be loaded, or a re-extraction that crashed, left the statement `LEARNING` forever.** Now it becomes `NEEDS_REVIEW` with the reason.
+  3. **On newest-first statements (BOI), the self-review pointed at row 1** as the row without an opening balance. It is the oldest row, which is the last one printed. The validator's own issue still says row 0; its codes are unchanged, so golden snapshots are unaffected.
+  4. **Typing a note on a self-review item silently recorded "Agree".** The note is now enabled only after a verdict is chosen.
+  5. **The self-review could show learning details from an unrelated earlier job** of the same statement. It now uses the job only when that job made the template.
+- **Checked and fine:**
+  - the local-only check on the model server address (`user@host`, `host.evil` and IPv6 forms are refused correctly);
+  - no statement values in the self-review or in error messages;
+  - additive database migrations only;
+  - the heuristic proposer stays ahead of the model;
+  - golden snapshots unchanged (`regress` 3 × PASS).

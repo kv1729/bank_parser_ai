@@ -32,6 +32,7 @@ from bank_parser.storage import Database, DocumentStore
 from bank_parser.templates import TemplateRegistry
 from bank_parser.core.validation import report_to_dict, validate_statement
 from bank_parser.self_review import build_self_review
+from bank_parser.core.text_checks import text_check, with_text_check
 
 log = logging.getLogger("bank_parser")   # never log statement content, names or numbers
 
@@ -205,7 +206,8 @@ class Processor:
         if cls is not None and cls.needs_ocr_pages:
             problems.append({"code": "pages_need_ocr", "message": f"pages without text: {list(cls.needs_ocr_pages)}",
                              "page": None, "row_index": None})
-        report_d = report_to_dict(report)
+        # Text checks (D-025): warnings only; template choice and acceptance do not use them.
+        report_d = with_text_check(report_to_dict(report), text_check(result.statement, result.text_trace))
         template = self.registry.get(template_id) if template_id else None
         job = self.db.latest_template_job(document_id) if template is not None else None
         if job and job.get("template_id") != template_id:

@@ -31,6 +31,11 @@ ROW_PROBLEMS = {"balance_mismatch": "its balance does not follow from the previo
                 "date_out_of_order": "its date is out of order",
                 "date_outside_period": "its date is outside the statement period"}
 MADE_BY = {"human_review": "by hand, after the owner's review", "template_agent": "the template agent"}
+TEXT_PROBLEMS = {"text_not_captured": "text inside the table belongs to no row (lost)",
+                 "empty_description": "the row has no description",
+                 "description_start_at_end": "the description ends with words that usually start one; "
+                                             "the next row's first line may have moved here",
+                 "label_in_value": "an account value contains a label word; it may include the wrong text"}
 PROPOSERS = {"heuristic": "rules", "llm": "the local AI model"}
 ROLE_SOURCES = {"header_text": "from the ruled table's heading words", "content": "from the columns' content",
                 "content+chain": "from content, debit/credit decided by the balance chain",
@@ -130,9 +135,23 @@ def build_self_review(statement, report, field_sources=None, template=None, job=
                           "low")
     fields["transactions.value_date"] = {"level": "medium", "reason": "read from its column; no check uses it"}
 
-    # --- text columns: nothing arithmetic checks them --------------------------------------
+    # --- text columns: nothing arithmetic checks them; the text checks look for lost or moved text
+    text = checks.get("text")
+    text_issues = (text or {}).get("issues", [])
     for col in ("description", "reference"):
-        fields[f"transactions.{col}"] = {"level": "medium", "reason": "text: no arithmetic check can confirm it"}
+        fields[f"transactions.{col}"] = {"level": "medium", "reason": "text: no arithmetic check can confirm it"
+                                         + ("; no text lost or moved" if text and not text_issues else "")}
+    if text and n and not text_issues:
+        checked.append("Text: all text inside the table belongs to a row, every row has a description, and no "
+                       "description ends with the words that start another.")
+    for k, i in enumerate(text_issues):
+        r, code = i.get("row_index"), i["code"]
+        where = f"Row {r + 1}" if r is not None else (f"Page {i['page']}" if i.get("page") else "Account details")
+        _item(unsure, f"text:{code}:{r if r is not None else i.get('page')}:{k}",
+              f"txn.{r}" if r is not None else "transactions",
+              f"{where}: " + TEXT_PROBLEMS.get(code, code) + ".", "low")
+        if code == "empty_description":
+            fields["transactions.description"]["level"] = "low"
     if n:
         _item(unsure, "text:descriptions", "transactions",
               "Descriptions and references are text: no arithmetic check can confirm them. Look for words cut off, "

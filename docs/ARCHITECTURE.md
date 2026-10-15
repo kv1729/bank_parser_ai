@@ -64,6 +64,7 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 | `extraction/header.py` | Header rules: `regex`, positional `region`, and labelled multi-line `block` rules (D-021). Templates with a rule kind the code does not know are rejected at load |
 | `extraction/select.py` | Which template extracts a document (newest, most specific, first that validates); shared by Workflow 1, `regress` and the agent gate (D-022) |
 | `pdf/json_layout.py` | Recorded page layouts (positioned words as JSON) served as a document; used by the anonymised layout fixtures |
+| `core/text_checks.py` | Text checks arithmetic cannot do: lost text, empty descriptions, moved first lines, label words in values (warnings, D-025) |
 | `self_review.py` | The system's review of each extraction: what was checked, what is unsure, confidence per field; calibration against the owner's marks (D-024) |
 | `golden.py` | Golden statements: snapshot, field-by-field diff, approval rules, regression run, agent gate (D-022) |
 | `extraction/inference.py`, `unknown.py` | Unknown-layout inference and Workflow 1 |

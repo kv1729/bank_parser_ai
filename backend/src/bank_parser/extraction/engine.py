@@ -14,6 +14,7 @@ class ExtractionResult:
     problems: tuple[Problem, ...] = ()
     timings_ms: dict = field(default_factory=dict)
     field_sources: dict = field(default_factory=dict)    # {header target: which rule found it} (D-024)
+    text_trace: dict = field(default_factory=dict)       # what the table reader skipped (D-025)
 
 
 def _pages_needed_by_rules(rules, page_count):
@@ -70,7 +71,8 @@ def extract_with_template(doc, template, document_id=None, strategy="template"):
                 kept[page.number] = page      # only header pages are retained
             yield page
 
-    rows, problems = assemble_rows(pages(), template.table)
+    trace = {}
+    rows, problems = assemble_rows(pages(), template.table, trace)
     t1 = time.perf_counter()
     txns, row_problems = rows_to_transactions(rows, template.table)
     sources = {}
@@ -81,4 +83,4 @@ def extract_with_template(doc, template, document_id=None, strategy="template"):
     t2 = time.perf_counter()
     return ExtractionResult(statement, tuple(problems) + tuple(row_problems) + tuple(header_problems),
                             {"layout_and_rows": round((t1 - t0) * 1000, 1), "normalize": round((t2 - t1) * 1000, 1)},
-                            sources)
+                            sources, trace)

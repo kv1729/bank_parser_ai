@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-15 (Stage 10.1–10.4 done, D-023, D-024). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-15 (Stage 10.1–10.5 done, D-023 – D-025). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -15,14 +15,14 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | Area | Done | Total | Status |
 |---|---|---|---|
 | A. Extraction core | 9 | 9 | ✅ |
-| B. Self-check of each extraction | 4 | 6 | 🟡 |
+| B. Self-check of each extraction | 5 | 6 | 🟡 |
 | C. Regression safety (golden set) | 6 | 6 | ✅ |
 | D. AI agent (learning new layouts) | 6 | 9 | 🟡 |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **31** | **53** | **58%** |
+| **Total** | **32** | **53** | **60%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -48,7 +48,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | B2 | Reconciliation with the bank's printed totals and counts | ✅ | D-005 | 4 |
 | B3 | Row and header checks (one of debit/credit, dates in period, IFSC) | ✅ | `core/validation.py` | 4 |
 | B4 | Result marked verified / needs review | ✅ | `EXTRACTED` vs `NEEDS_REVIEW` | 4 |
-| B5 | Checks for **text** fields (descriptions, names), which arithmetic cannot verify | ⬜ | Started (D-023): proposed column labels must fit their content (dates, amounts, longest text = description). Still to do: checks on every extraction | 10 |
+| B5 | Checks for **text** fields (descriptions, names), which arithmetic cannot verify | ✅ | D-025: lost text, empty descriptions, moved first lines, label words in values, on every extraction; D-023: labels must fit their content. `tests/test_text_checks.py` | 10 |
 | B6 | A confidence score per document and per field | ⬜ | Needed before removing the human | 11 |
 
 ## C. Regression safety: what worked must keep working

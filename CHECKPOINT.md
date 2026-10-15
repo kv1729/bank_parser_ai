@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-15 (Stage 10.1–10.5 done, D-023 – D-025). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-15 (Stage 10.1–10.6 done, D-023 – D-026). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -21,8 +21,8 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
-| H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **32** | **53** | **60%** |
+| H. Compliance (India now, US later) | 2 | 6 | 🟡 |
+| **Total** | **33** | **53** | **62%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -117,7 +117,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | H3 | Audit log of who accessed which statement | ⬜ | | 14 |
 | H4 | Breach-response runbook | ⬜ | | 14 |
 | H5 | Privacy gate recognises US identifiers (SSN, ABA routing, card numbers) | ⬜ | Today: PAN-shaped strings, emails, known values | 12 |
-| H6 | Locale-aware formats and validators (US dates, routing numbers instead of IFSC) | ⬜ | `$` amounts already parsed (D-020) | 10 |
+| H6 | Locale-aware formats and validators (US dates, routing numbers instead of IFSC) | ✅ | D-026: two synthetic US statements read exactly; ABA checksum; India unchanged. Multi-section US statements: Stage 16 | 10 |
 
 Also see F5 (encryption at rest) and G5 (authentication), which are compliance requirements too.
 

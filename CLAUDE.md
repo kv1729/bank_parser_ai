@@ -36,7 +36,7 @@
     - `learning/` (template agent)
     - `storage/`, `pipeline.py`, `api/` (FastAPI), `config.py`
   - `template_registry/` — committed, reviewed templates plus `regression_corpus.json`. Runtime-learned templates go to `data/templates/` (gitignored) and are promoted here only after review.
-  - `tests/` — pytest. `tests/helpers.py` holds sample paths, `tests/fixtures/pdfs/` the synthetic samples, and `tests/fixtures/layouts/` anonymised copies of the golden layouts (fake values only; made with `scripts/anonymise_layout.py`, owner checks previews before commit). Local-only fixtures (`*.expected.json`) and the private statement skip when absent.
+  - `tests/` — pytest. `tests/helpers.py` holds sample paths, `tests/fixtures/pdfs/` the synthetic samples, `tests/fixtures/layouts/` anonymised copies of the golden layouts (fake values only; made with `scripts/anonymise_layout.py`, owner checks previews before commit), and `tests/fixtures/us_layouts/` synthetic US statements (`scripts/make_us_layouts.py`, fake data). Local-only fixtures (`*.expected.json`) and the private statement skip when absent.
   - `scripts/` (`benchmark.py`, `refresh_sensitive_strings.py`) and `experiments/` (one-off). Print only masked or aggregate output.
 - `frontend/` — static web UI served by the API (`BANK_PARSER_FRONTEND_DIR`).
 - `scripts/privacy_check.py` — repository tooling (stdlib only), used by `.githooks/` and CI.

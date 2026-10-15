@@ -2,13 +2,13 @@
 import re
 
 from bank_parser.extraction.lines import group_lines
-from bank_parser.extraction.parsing import CANDIDATE_DATE_FORMATS, ParseError, normalize_space, parse_amount, parse_date
+from bank_parser.extraction.parsing import ParseError, header_date_formats, normalize_space, parse_amount, parse_date
 from bank_parser.extraction.table import Problem
 
 _MONEY_TARGETS = {"header.opening_balance", "header.closing_balance", "summary.total_debits", "summary.total_credits"}
 _INT_TARGETS = {"summary.debit_count", "summary.credit_count"}
 _DATE_TARGETS = {"header.period_start", "header.period_end"}
-_CURRENCY_SYMBOLS = {"₹": "INR"}
+_CURRENCY_SYMBOLS = {"₹": "INR", "$": "USD"}
 
 
 def _flags(spec):
@@ -42,7 +42,7 @@ def _convert(target, raw, date_formats):
         return int(raw)
     if target in _DATE_TARGETS:
         # Header dates are often printed differently from table dates (4- vs 2-digit year).
-        return parse_date(raw, tuple(date_formats) + CANDIDATE_DATE_FORMATS)
+        return parse_date(raw, header_date_formats(date_formats))
     if target == "header.currency":
         return _CURRENCY_SYMBOLS.get(raw, raw)
     return raw
@@ -151,6 +151,7 @@ def apply_header_rules(rules, pages_by_number, page_count, default_date_formats,
     which rule found each value (used by the self-review, D-024; values are not recorded).
     """
     values, problems = {}, []
+    pending = {}        # parse problems; dropped when a later (fallback) rule fills the field (D-026)
     for index, rule in enumerate(rules):
         if all(t in values for t in rule.targets):
             continue
@@ -179,11 +180,12 @@ def apply_header_rules(rules, pages_by_number, page_count, default_date_formats,
                 try:
                     v = _convert(target, raw, fmts)
                 except ParseError as e:
-                    problems.append(Problem("unparseable_header_value", f"{target}: {e}", n))
+                    pending[target] = Problem("unparseable_header_value", f"{target}: {e}", n)
                     continue
                 if v is not None:
                     values[target] = v
                     if sources is not None:
                         sources[target] = {"rule": index, "kind": rule.kind, "page": n}
             break
+    problems += [p for t, p in pending.items() if t not in values]
     return values, problems

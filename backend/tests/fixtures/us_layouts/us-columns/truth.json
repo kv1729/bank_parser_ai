@@ -1,0 +1,82 @@
+{
+  "period_start": "2023-12-15",
+  "period_end": "2024-01-14",
+  "opening_balance": "1250.00",
+  "closing_balance": "1878.63",
+  "routing_number": "123456780",
+  "currency": "USD",
+  "total_debits": "966.62",
+  "total_credits": "1595.25",
+  "transactions": [
+    {
+      "txn_date": "2023-12-18",
+      "description": "CARD PURCHASE GROCERY MART SPRINGFIELD ST",
+      "debit": "82.17",
+      "credit": null,
+      "balance": "1167.83"
+    },
+    {
+      "txn_date": "2023-12-22",
+      "description": "ACH DEPOSIT EXAMPLE PAYROLL",
+      "debit": null,
+      "credit": "1520.00",
+      "balance": "2687.83"
+    },
+    {
+      "txn_date": "2023-12-27",
+      "description": "CHECK 1043",
+      "debit": "400.00",
+      "credit": null,
+      "balance": "2287.83"
+    },
+    {
+      "txn_date": "2023-12-30",
+      "description": "ONLINE TRANSFER TO SAVINGS REF 99812",
+      "debit": "250.00",
+      "credit": null,
+      "balance": "2037.83"
+    },
+    {
+      "txn_date": "2024-01-02",
+      "description": "CARD PURCHASE COFFEE HOUSE",
+      "debit": "6.45",
+      "credit": null,
+      "balance": "2031.38"
+    },
+    {
+      "txn_date": "2024-01-05",
+      "description": "ACH DEBIT UTILITY CO",
+      "debit": "131.01",
+      "credit": null,
+      "balance": "1900.37"
+    },
+    {
+      "txn_date": "2024-01-09",
+      "description": "ATM WITHDRAWAL MAIN ST",
+      "debit": "60.00",
+      "credit": null,
+      "balance": "1840.37"
+    },
+    {
+      "txn_date": "2024-01-10",
+      "description": "MOBILE DEPOSIT",
+      "debit": null,
+      "credit": "75.25",
+      "balance": "1915.62"
+    },
+    {
+      "txn_date": "2024-01-12",
+      "description": "CARD PURCHASE BOOK STORE SPRINGFIELD ST",
+      "debit": "24.99",
+      "credit": null,
+      "balance": "1890.63"
+    },
+    {
+      "txn_date": "2024-01-14",
+      "description": "MONTHLY SERVICE FEE",
+      "debit": "12.00",
+      "credit": null,
+      "balance": "1878.63"
+    }
+  ]
+}

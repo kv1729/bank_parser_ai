@@ -1,0 +1,54 @@
+{
+  "period_start": "2024-01-01",
+  "period_end": "2024-01-31",
+  "opening_balance": "2000.00",
+  "closing_balance": "2270.78",
+  "routing_number": "123456780",
+  "currency": "USD",
+  "total_debits": "1829.64",
+  "total_credits": "2100.42",
+  "transactions": [
+    {
+      "txn_date": "2024-01-03",
+      "description": "DIRECT DEPOSIT EXAMPLE CORP",
+      "debit": null,
+      "credit": "2100.00",
+      "balance": "4100.00"
+    },
+    {
+      "txn_date": "2024-01-05",
+      "description": "RENT PAYMENT ONLINE",
+      "debit": "1450.00",
+      "credit": null,
+      "balance": "2650.00"
+    },
+    {
+      "txn_date": "2024-01-11",
+      "description": "POS PURCHASE HARDWARE STORE",
+      "debit": "45.10",
+      "credit": null,
+      "balance": "2604.90"
+    },
+    {
+      "txn_date": "2024-01-16",
+      "description": "INTEREST PAYMENT",
+      "debit": null,
+      "credit": "0.42",
+      "balance": "2605.32"
+    },
+    {
+      "txn_date": "2024-01-22",
+      "description": "ACH DEBIT CREDIT CARD AUTOPAY",
+      "debit": "310.55",
+      "credit": null,
+      "balance": "2294.77"
+    },
+    {
+      "txn_date": "2024-01-29",
+      "description": "POS PURCHASE PHARMACY",
+      "debit": "23.99",
+      "credit": null,
+      "balance": "2270.78"
+    }
+  ]
+}

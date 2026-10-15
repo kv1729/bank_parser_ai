@@ -629,3 +629,37 @@ The review screen will show that review beside the output. The owner gives feedb
   - **Moved text** (the D-018 rule switched off on the SBI copy): all 81 changed rows are flagged on themselves or a neighbour, with no flag on an untouched row. The first row's line, which had nowhere to go, is reported as lost.
   - **Lost text** (the description column made too narrow): caught on ICICI (table ended early) and on BOI (every row lost).
   - `regress` 3 × PASS.
+
+## D-026 — US statement formats and validators (Stage 10.6, CHECKPOINT H6)
+
+- **Date:** 2026-10-15
+- **Owner:** approved the plan.
+- **Problem:** the parser assumed Indian conventions:
+  - day-first dates only, and rows could start only at numeric dates (never "Jan 15");
+  - no support for rows without a year;
+  - no routing number;
+  - no US labels (Beginning/Ending Balance, Statement Period ... through ...);
+  - no `amount` column word for the single signed column common in the US.
+- **Decision:**
+  - **Dates:**
+    - month-first formats, month-name dates ("Jan 5, 2024") and year-less dates ("01/15", "Jan 15") follow the day-first candidates, so ambiguous Indian dates read as before;
+    - a year-less row gets the period-end year, or the year before for months after the period-end month (`engine.resolve_years`); with no period, the problem is `date_year_unknown`;
+    - header dates use month-first order when the table's own format is month-first;
+    - `choose_date_format` accepts newest-first order, so an Indian newest-first statement never falls through to month-first.
+  - **Amounts:** a trailing minus ("45.10-") reads as negative.
+  - **Routing number:** stored in `header.extra.routing_number`, not as a new schema field, because a new field would change every golden snapshot. It is checked with the ABA 3-7-1 checksum (`invalid_routing_number` FAIL) and rated high in the self-review when valid.
+  - **Generic US header rules,** after every Indian rule: routing number, Statement Period (numeric or month-name; through/to/-), Beginning/Ending Balance, Total Deposits/Withdrawals, `$` = USD. Existing templates keep their own rule copies.
+  - **Header-rule parse problems:** one now counts only when no later rule fills the field. Otherwise an Indian rule matching a US period would block a correct US reading.
+  - **Column words:** `amount` (signed column), `dr_cr`, Additions/Subtractions; `word_roles` accepts a signed layout without the model.
+- **Evidence:** two synthetic US statements (`scripts/make_us_layouts.py`, fake data, `tests/fixtures/us_layouts/`), each with the script's own record of what it printed:
+  - **us-columns:** Withdrawals/Deposits, year-less dates across New Year, 2 pages.
+  - **us-signed:** one Amount column with leading and trailing minus, "Jan 05, 2024" dates.
+
+  Both are read by Workflow 1 with no model, exactly as printed: rows, dates, balances, totals, routing number, currency. The balance chain and reconciliation PASS, with no text warnings.
+- **India unchanged:**
+  - `regress` 3 x PASS;
+  - the 10.1 layout check still 10/10;
+  - the heading-word labelling unchanged (6/10);
+  - the text checks clean on all 8 known-correct statements;
+  - the full suite passes (246).
+- **Not in this step (new Stage 16):** US statements split into separate Deposits / Withdrawals / Checks sections, often with no running balance (e.g. Chase); this needs multi-table reading. US identifiers in the privacy gate stay in Stage 12 (H5).

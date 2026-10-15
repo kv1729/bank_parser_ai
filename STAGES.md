@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) 10.4 (self-review) and 10.5 (text checks) are done (D-023 – D-025). **Next:** 10.6, US formats. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: the first feedback the agent gets. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) 10.4 (self-review), 10.5 (text checks) and 10.6 (US formats) are done (D-023 – D-026). **Next:** 10.7, the owner's feedback as training examples. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: the first feedback the agent gets. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -21,6 +21,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 13 | OCR for scanned PDFs | Not started | — | — |
 | 14 | Production hardening | Not started | — | — |
 | 15 | MCP / agent interface | Not started | — | — |
+| 16 | US statements with separate sections | Not started | — | — |
 
 \* One open item carried forward: sample-data PII decision (docs/DECISIONS.md D-004).
 
@@ -176,7 +177,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
     - End to end: all 3 golden statements learned by the local model in 11–14 s, identical to golden.
   - [x] **10.5 Text checks** (D-025): lost text, rows without a description, a description ending with the start of the next row, label words inside account values. Warnings on every extraction, fed into the self-review. No false alarms on the 8 known-correct statements; the D-018 failure and lost lines are caught.
   - [x] **10.4 Agent self-review** (D-024): for every extraction, what was checked, what is unsure (with ids), a confidence per field (high / medium / low / missing, with the reason) and how the template was made. Deterministic, never values. Shown in `/review` with Agree/Disagree and a note per item, plus a calibration line comparing the owner's marks with the ratings.
-  - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
+  - [x] **10.6 US formats** (D-026): month-first, month-name and year-less dates (year from the period), trailing-minus amounts, routing number with the ABA checksum, US header labels, signed amount columns. Two synthetic US statements are read exactly as printed; India unchanged (`regress`, 10.1 check, full suite).
   - [ ] Human flags and approvals stored as training examples for the agent.
   - [ ] Evaluation on held-out statements: success rate, time, re-tries.
 - **Sub-steps:**
@@ -185,7 +186,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - 10.3 AI fallback extraction ✅
   - 10.4 agent self-review ✅
   - 10.5 text checks ✅
-  - 10.6 US formats
+  - 10.6 US formats ✅
   - 10.7 feedback as training examples
   - 10.8 held-out evaluation
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
@@ -214,3 +215,14 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 ## 15. MCP / agent interface — Not started
 
 - **Goal:** Expose `parse_statement` to other agents, only if one will consume it (PLAN §16).
+
+## 16. US statements with separate sections — Not started
+
+- **Goal:** read US statements that list deposits, withdrawals and checks in separate sections, often with no running balance (e.g. Chase), not as one transaction table.
+- **Added:** 2026-10-15, during 10.6 (D-026), as new scope.
+- **Deliverables:**
+  - [ ] Multi-table reading: several tables per statement, each with its own heading and direction.
+  - [ ] Checks paid (number, date, amount).
+  - [ ] Verification without a running balance: section totals and Beginning + deposits - withdrawals = Ending.
+  - [ ] Synthetic test statements in this shape (fake data).
+- **Exit criteria:** a synthetic multi-section statement is read exactly and reconciles; India and single-table US unchanged (`regress`, tests).

@@ -52,6 +52,24 @@ GENERIC_HEADER_RULES = (
                date_formats=("%b %d, %Y", "%B %d, %Y", "%b. %d, %Y")),
     HeaderRule("regex", ("header.currency",), (1,), r"\bin\s+(INR|USD)\b"),
     HeaderRule("regex", ("header.currency",), (1,), r"(₹)"),
+    # US statements (D-026). After every Indian rule, so Indian layouts are unaffected.
+    HeaderRule("regex", ("header.extra.routing_number",), (1, 2),
+               r"\b(?:Routing(?:\s+(?:Number|No\.?|#))?|ABA(?:\s+(?:Number|No\.?|#))?|RTN)\s*:?\s*(\d{9})\b", "i"),
+    HeaderRule("regex", ("header.period_start", "header.period_end"), (1, 2),
+               rf"(?:Statement\s+)?Period\s*:?\s*({_DATE}|{_MDATE})\s*(?:through|thru|to|-|–)\s*({_DATE}|{_MDATE})", "i",
+               date_formats=("%m/%d/%Y", "%m/%d/%y", "%b %d, %Y", "%B %d, %Y")),
+    HeaderRule("regex", ("header.period_start", "header.period_end"), (1, 2),
+               rf"({_MDATE})\s*(?:through|thru)\s*({_MDATE})", "i",
+               date_formats=("%b %d, %Y", "%B %d, %Y")),
+    HeaderRule("regex", ("header.opening_balance",), (1, 2),
+               rf"(?:Beginning|Starting|Previous)\s+Balance(?:\s+on\s+{_MDATE}|\s+on\s+{_DATE})?\s*:?\s*\$?\s*({_MONEY})", "i"),
+    HeaderRule("regex", ("header.closing_balance",), (-1, 1),
+               rf"(?:Ending|New)\s+Balance(?:\s+on\s+{_MDATE}|\s+on\s+{_DATE})?\s*:?\s*\$?\s*({_MONEY})", "i"),
+    HeaderRule("regex", ("summary.total_credits",), (1, -1),
+               rf"Total\s+(?:Deposits|Credits|Additions)(?:\s+and\s+(?:Other\s+)?(?:Additions|Credits))?\s*:?\s*\$?\s*({_MONEY})", "i"),
+    HeaderRule("regex", ("summary.total_debits",), (1, -1),
+               rf"Total\s+(?:Withdrawals|Debits|Subtractions)(?:\s+and\s+(?:Other\s+)?(?:Subtractions|Debits))?\s*:?\s*\$?\s*({_MONEY})", "i"),
+    HeaderRule("regex", ("header.currency",), (1,), r"(\$)\s?[\d,]+\.\d{2}"),
 )
 
 # IFSC bank prefix -> (bank_code, bank name). Identity comes from the account's

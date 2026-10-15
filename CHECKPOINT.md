@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-14 (Stage 9 done, D-022). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-15 (Stage 10.1–10.4 done, D-023, D-024). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -14,15 +14,15 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 
 | Area | Done | Total | Status |
 |---|---|---|---|
-| A. Extraction core | 8 | 9 | 🟡 |
+| A. Extraction core | 9 | 9 | ✅ |
 | B. Self-check of each extraction | 4 | 6 | 🟡 |
 | C. Regression safety (golden set) | 6 | 6 | ✅ |
-| D. AI agent (learning new layouts) | 2 | 9 | ⬜ |
+| D. AI agent (learning new layouts) | 6 | 9 | 🟡 |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 1 | 6 | ⬜ |
-| **Total** | **26** | **53** | **49%** |
+| **Total** | **31** | **53** | **58%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -37,7 +37,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | A5 | Versioned templates, never overwritten | ✅ | D-009 | 4 |
 | A6 | Known layout extracted in < 0.5 s | ✅ | 0.41 s for 9 pages (D-015) | 8 |
 | A7 | Layouts whose first column is not the date (`Sr No`), currency symbols, header on page 1 only, newest-first order | ✅ | D-020: statements 2 and 3 extracted, templates learned; earlier outputs identical | 7 |
-| A8 | Layouts without ruled grid lines **and** without heading text | ⬜ | The agent's job (D), or Docling (D-016) | 10 |
+| A8 | Layouts without ruled grid lines **and** without heading text | ✅ | D-023: columns from the rows' gaps, roles from the local model; the SBI copy (no rules, only "Balance" as heading) is extracted identically | 10 |
 | A9 | Account details on every real layout: holder name and address (labelled, multi-line or unlabelled), branch, period, currency | ✅ | D-021: 9 header fields on each of statements 2 and 3 | 7 |
 
 ## B. Self-check of each extraction (no expected answer needed)
@@ -48,7 +48,7 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | B2 | Reconciliation with the bank's printed totals and counts | ✅ | D-005 | 4 |
 | B3 | Row and header checks (one of debit/credit, dates in period, IFSC) | ✅ | `core/validation.py` | 4 |
 | B4 | Result marked verified / needs review | ✅ | `EXTRACTED` vs `NEEDS_REVIEW` | 4 |
-| B5 | Checks for **text** fields (descriptions, names), which arithmetic cannot verify | ⬜ | e.g. every row's first line captured, no text left over between rows | 10 |
+| B5 | Checks for **text** fields (descriptions, names), which arithmetic cannot verify | ⬜ | Started (D-023): proposed column labels must fit their content (dates, amounts, longest text = description). Still to do: checks on every extraction | 10 |
 | B6 | A confidence score per document and per field | ⬜ | Needed before removing the human | 11 |
 
 ## C. Regression safety: what worked must keep working
@@ -68,13 +68,13 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 |---|---|---|---|---|
 | D1 | Bounded learning loop (propose → extract → self-check → regression → save), never blocking extraction | ✅ | D-011, `test_pipeline.py` | 4 |
 | D2 | Recipe-based proposer for ruled tables | ✅ | `learning/proposers.py` | 4 |
-| D3 | Local open-source model installed and selected (≤ 3 candidates, ≤ 2 tested) | ⬜ | Ollama present; model to choose (D-019) | 10 |
-| D4 | AI proposer: reads the statement and proposes a template | ⬜ | Slot exists, disabled | 10 |
-| D5 | AI fallback extraction when no recipe or template fits; status `LEARNING`, then the result appears | ⬜ | | 10 |
+| D3 | Local open-source model installed and selected (≤ 3 candidates, ≤ 2 tested) | ✅ | D-023: qwen3.5:9b, 10/10 identical; `experiments/llm_choice.py` | 10 |
+| D4 | AI proposer: reads the statement and proposes a template | ✅ | D-023: learned all 3 golden statements from scratch, identical; `experiments/llm_holdout.py`, `tests/test_llm_proposer.py` | 10 |
+| D5 | AI fallback extraction when no recipe or template fits; status `LEARNING`, then the result appears | ✅ | D-023 addendum: `experiments/pipeline_holdout.py` (3/3 identical to golden, 11–14 s), `tests/test_pipeline.py` | 10 |
 | D6 | Every AI result passes the same self-check (B) and regression gate (C) | ⬜ | | 10 |
 | D7 | Learns from human corrections: flags and approvals become examples for the agent | ⬜ | | 10 |
 | D8 | Agent measured on held-out statements (success rate, time, re-tries) | ⬜ | | 10 |
-| D9 | Agent writes **its own review** of each statement it builds (what it checked, what it is unsure of, confidence per field); the owner reviews that review | ⬜ | Owner requirement (D-020) | 10 |
+| D9 | Agent writes **its own review** of each statement it builds (what it checked, what it is unsure of, confidence per field); the owner reviews that review | ✅ | D-024: `self_review.py`, Agree/Disagree in `/review`, calibration; `tests/test_self_review.py` | 10 |
 
 ## E. Confidence & autonomy: removing the human
 

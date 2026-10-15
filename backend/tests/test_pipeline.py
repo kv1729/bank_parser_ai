@@ -70,9 +70,12 @@ def test_learning_failure_never_breaks_extraction(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "run_learning_job", broken)
     p = _processor(tmp_path, tmp_path / "no-templates")
     doc_id = _ingest(p, HDFC_PDF)
-    assert p.process(doc_id) in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW)
+    assert p.process(doc_id) in (DocStatus.EXTRACTED, DocStatus.LEARNING)
     assert p.wait_idle(30)
     assert p.db.latest_extraction(doc_id)["statement"]["transactions"]
+    # The crash closes the job and the document no longer waits for it.
+    assert p.db.latest_template_job(doc_id)["status"] == "FAILED"
+    assert p.db.get_document(doc_id)["status"] in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW)
     p.shutdown()
 
 
@@ -142,3 +145,124 @@ def test_scanned_pdf_flagged_for_ocr(tmp_path):
     assert p.process(doc_id) == DocStatus.NEEDS_OCR
     assert p.db.get_document(doc_id)["pdf_kind"] == "SCANNED"
     p.shutdown()
+
+
+# --- Stage 10.3: LEARNING status, then the checked result (D-023) -----------------------------
+
+def _no_table(*args, **kwargs):
+    """Workflow 1 finds no table (as for an unknown layout it cannot read)."""
+    from bank_parser.extraction.engine import ExtractionResult
+    from bank_parser.extraction.table import Problem
+    return ExtractionResult(None, (Problem("no_layout", "no transaction table could be inferred"),), {}), None
+
+
+def test_unreadable_layout_shows_learning_then_the_learned_result(tmp_path, monkeypatch):
+    release = threading.Event()
+    real_job = pipeline.run_learning_job
+
+    def slow_learning(*args):
+        assert release.wait(30)
+        return real_job(*args)
+
+    monkeypatch.setattr(pipeline, "extract_unknown", _no_table)
+    monkeypatch.setattr(pipeline, "run_learning_job", slow_learning)
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)
+
+    assert p.process(doc_id) == DocStatus.LEARNING          # returns at once, learning still blocked
+    doc = p.db.get_document(doc_id)
+    assert doc["status"] == DocStatus.LEARNING and "learning this layout" in doc["error"]
+
+    release.set()
+    assert p.wait_idle(60)
+    assert p.db.latest_template_job(doc_id)["status"] == "ACCEPTED"
+    assert p.db.latest_extraction(doc_id)["workflow"] == "known_template"
+    assert p.db.get_document(doc_id)["status"] == DocStatus.EXTRACTED
+    p.shutdown()
+
+
+def test_learned_result_is_never_overtaken_by_the_first_attempt(tmp_path, monkeypatch):
+    """Learning starts only after Workflow 1 stored its result, so a learner that finishes at once
+    still leaves the template extraction as the latest one."""
+    monkeypatch.setattr(pipeline, "extract_unknown", _no_table)
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)
+    p.process(doc_id)
+    assert p.wait_idle(60)
+    assert p.db.latest_extraction(doc_id)["workflow"] == "known_template"
+    p.shutdown()
+
+
+def test_learning_that_fails_turns_into_needs_review_with_the_reason(tmp_path, monkeypatch):
+    def gives_up(settings, job_id, *args):
+        from bank_parser.storage import Database
+        Database(settings.db_path).update_template_job(job_id, status="HUMAN_REVIEW", reason="no proposer produced a candidate")
+        return "HUMAN_REVIEW", None
+
+    monkeypatch.setattr(pipeline, "extract_unknown", _no_table)
+    monkeypatch.setattr(pipeline, "run_learning_job", gives_up)
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)
+    assert p.process(doc_id) == DocStatus.LEARNING
+    assert p.wait_idle(30)
+    doc = p.db.get_document(doc_id)
+    assert doc["status"] == DocStatus.NEEDS_REVIEW and "no proposer produced a candidate" in doc["error"]
+    p.shutdown()
+
+
+def test_verified_first_attempt_is_extracted_at_once_and_learning_stays_silent(tmp_path, monkeypatch):
+    def gives_up(settings, job_id, *args):
+        return "HUMAN_REVIEW", None
+    monkeypatch.setattr(pipeline, "run_learning_job", gives_up)
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)                  # ruled synthetic table: Workflow 1 verifies it
+    assert p.process(doc_id) == DocStatus.EXTRACTED
+    assert p.wait_idle(30)
+    assert p.db.get_document(doc_id)["status"] == DocStatus.EXTRACTED
+    p.shutdown()
+
+
+def test_reupload_while_learning_starts_no_second_job(tmp_path):
+    from fastapi.testclient import TestClient
+    from bank_parser.api.main import create_app
+    settings = Settings.from_env(data_dir=tmp_path / "data", committed_templates_dir=tmp_path / "no-templates")
+    with TestClient(create_app(settings, learning_mode="thread")) as client:
+        doc_id = _ingest_via_api(client)
+        db = pipeline.Database(settings.db_path)
+        assert _settle(client, doc_id)
+        jobs_before = _job_count(db, doc_id)
+        db.update_document(doc_id, status=DocStatus.LEARNING)
+        _ingest_via_api(client)
+        assert client.post(f"/api/documents/{doc_id}/reprocess").status_code == 409
+        assert _job_count(db, doc_id) == jobs_before
+
+
+def test_interrupted_work_is_marked_at_start(tmp_path):
+    db = pipeline.Database(tmp_path / "db.sqlite")
+    db.upsert_document("a" * 64, "x.pdf", 1)
+    db.update_document("a" * 64, status=DocStatus.LEARNING)
+    job = db.add_template_job("a" * 64)
+    assert db.mark_interrupted() == ["a" * 64]
+    assert db.get_document("a" * 64)["status"] == DocStatus.NEEDS_REVIEW
+    assert db.latest_template_job("a" * 64)["status"] == "FAILED"
+
+
+def _ingest_via_api(client):
+    with open(SBI_PDF, "rb") as f:
+        return client.post("/api/documents", files={"file": ("s.pdf", f, "application/pdf")}).json()["document_id"]
+
+
+def _settle(client, doc_id):
+    import time
+    for _ in range(300):
+        body = client.get(f"/api/documents/{doc_id}").json()
+        job = body.get("template_job") or {}
+        if body["document"]["status"] not in ("RECEIVED", "PROCESSING", "LEARNING") and job.get("status") not in ("QUEUED", "RUNNING"):
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def _job_count(db, doc_id):
+    with db.connect() as c:
+        return c.execute("SELECT COUNT(*) FROM template_jobs WHERE document_id = ?", (doc_id,)).fetchone()[0]

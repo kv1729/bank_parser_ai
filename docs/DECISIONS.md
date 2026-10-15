@@ -467,3 +467,128 @@ The review screen will show that review beside the output. The owner gives feedb
   - **Owner approval (2026-10-14):** checked the previews and approved committing both the copies and their templates.
 - **Design as planned before building C6:**
   - **Anonymised layout copies for CI (C6):** word-layout JSON fixtures (positions kept; every non-label token replaced with a fake of the same shape; amounts regenerated so the balance chain holds), served by a test double. The owner checks them before commit; at most 2 experiments per layout (PLAN §6).
+
+## D-023 — Local model for the template agent: qwen3.5:9b, labelling only (Stage 10.1–10.2)
+
+- **Date:** 2026-10-15
+- **Owner:** approved starting Stage 10 with a **local** model (not a hosted API: privacy, free, repeatable, offline) and the plan for 10.1–10.2.
+- **Problem:** the template agent learned only layouts with a ruled table. Tables without ruled lines, with unfamiliar headings, or with no heading text at all (current SBI prints only "Balance") ended in human review.
+- **Candidates (PLAN §6: ≤ 3, ≤ 2 tested):**
+  - Shortlisted: qwen3.5:4b and qwen3.5:9b (both Apache-2.0), phi4-mini (MIT) in reserve. Licences were read from each model's Ollama licence file.
+  - Excluded: gemma3 and llama3.2 (licences not open source); gpt-oss:20b (13.8 GB, too large for 16 GB RAM).
+- **Experiment 1 — the model reads the whole page** (numbered lines with x positions) and returns heading lines, last row and column positions:
+  - 4b: 0 of 5 cases usable, 85–180 s per answer.
+  - Lesson: locating things by line number and position is geometry, which small models do badly and code does well.
+- **Experiment 2 — code finds the table, the model only labels it.**
+  - **Code** (`learning/llm_view.py`):
+    - transaction lines: a date among the first three words, plus a money amount;
+    - the 1–3 heading lines above them (description lines touching the first date line are skipped, D-018);
+    - columns: heading words grouped by gaps, or the rows' own gaps when there is too little heading text;
+    - boundaries: between neighbouring headings, where the fewest table words cross;
+    - the date format.
+  - **The model** sees each column's heading and three real sample values, with placeholders skipped and taken from up to 4 pages. It answers with one role per column, and nothing else.
+  - **Amount mode** follows from the roles in code. Asking the model for it caused one of its errors.
+  - **Ollama call:** JSON schema with exactly one role per column, `temperature 0`, fixed seed, answer capped at 200 tokens, context 2048 tokens.
+    - The cap is needed: without it, the 4b once generated 2,283 tokens of repeated list items.
+    - The small context keeps memory down.
+- **Evidence (`experiments/llm_choice.py`, 10 cases, each answered twice):**
+  - **Cases:** the 3 golden statements; the BOI and ICICI anonymised copies; the same two with their headings reworded (e.g. "Withdrawals", "Closing Bal", "Narration Details"); the SBI copy (no heading text); the 2 synthetic PDFs.
+
+  | Model | Base cases identical | Hard cases identical | Repeatable | Typical answer | Memory |
+  |---|---|---|---|---|---|
+  | qwen3.5:4b | 3 / 7 | 0 / 3 | yes | 15 s | 3.3 GB |
+  | **qwen3.5:9b** | **7 / 7** | **3 / 3** | yes | 12 s (first 46 s, loading) | 6.1 GB |
+
+  - "Identical" means every transaction's dates, description, reference, debit, credit and balance equal the approved output. The serial-number field differs on the last row of BOI and ICICI: a footer word sits 1.5 pt from the column edge, which the ruled template places differently. Money and text fields are unaffected.
+  - With familiar heading words alone, no model is needed: 6 of 10 identical. This path is now part of the heuristic proposer.
+  - **Hold-out, end to end** (`experiments/llm_holdout.py`): the agent with **only** the local-model proposer and an empty template registry learned each of the 3 golden statements on the first attempt, with all checks applied. Each took 11–13 s and 444–521 tokens, and every transaction was identical to the golden output. `regress` stays 3 × PASS.
+- **Decision:**
+  - **Model:** `qwen3.5:9b` is the default (`BANK_PARSER_LLM_MODEL`), with a token budget of 4,000 per learning job (`BANK_PARSER_LLM_MAX_TOKENS`; 0 = off).
+  - **When the model runs:** only when Ollama runs locally and the model is installed, and only after the heuristic proposer fails.
+  - **Proposer order:**
+    1. ruled table;
+    2. unruled table labelled by familiar heading words;
+    3. local model.
+  - **Checks:** a model's labels must pass `_check_content`/`_check_description`, then the agent's arithmetic, marker and golden gates.
+  - **Swap:** when the balance chain fails and both debit and credit are labelled, they are swapped once (the balance decides) before the model is asked again. Without headings, the samples cannot tell money in from money out.
+- **Safety findings:**
+  - **Wrong labels can pass the arithmetic:** a 4b labelling with the description column called "reference" passed validation (PASS) with wrong text. New content checks reject it:
+    - date columns must hold dates;
+    - money columns must hold amounts;
+    - a description column is required and must hold the longest text over whole rows;
+    - the balance column must not be empty.
+
+    This is a first part of CHECKPOINT B5.
+  - **Memory:** on this 16 GB laptop the 9b leaves little free memory (one benchmark run was stopped by low memory). It runs only for layouts the rules cannot learn, so rarely. If memory becomes a problem, turn it off or close other apps.
+- **Rule change (owner-approved with the plan):** only a local model (Ollama on 127.0.0.1; `llm/ollama.py` refuses any other host) may see statement content, never a hosted LLM. Statement text goes to it as fenced data; its answer is schema-checked, never executed. `CLAUDE.md` is updated accordingly.
+
+### D-023 addendum — Stage 10.3: `LEARNING`, then the checked result (2026-10-15)
+
+- **Problem:**
+  - For an unruled layout, Workflow 1 stored no result and said `NEEDS_REVIEW` while the agent was still learning.
+  - Learning started *before* Workflow 1 stored its result. A fast learner's re-extraction could therefore be overtaken by the older first attempt.
+- **Decision:**
+  - **Workflow 1 reads unruled tables too,** with familiar heading words (`extract_unruled`, the 10.2 code path). It **never calls the model**, so extraction stays fast and deterministic.
+  - **New status `LEARNING`:** shown when the first result is not verified (or there is none) and the agent has started. When the agent accepts a template, the statement is re-extracted with it (the existing `submit_reextract`). Otherwise the status becomes `NEEDS_REVIEW` with the agent's reason.
+  - **Order:** store the first result → set the status → start learning.
+  - **One learning job per statement:**
+    - an upload, a review-list import or **Re-extract** during `PROCESSING`/`LEARNING` does nothing (409 for re-extract);
+    - a learner crash closes its job as `FAILED`;
+    - at app start, work interrupted by a restart is marked `NEEDS_REVIEW` ("interrupted") so it can be reprocessed (jobs do not survive restarts, CHECKPOINT G4). Only status fields change.
+  - `BANK_PARSER_LEARNING_PROPOSERS` (`heuristic,llm` by default; `llm` alone for evaluation).
+- **Evidence:**
+  - **Pipeline tests:** `LEARNING` then the learned result; an instant learner is not overtaken; a failed learner gives `NEEDS_REVIEW` with its reason; a verified first attempt stays `EXTRACTED`; a re-upload while learning starts no second job; interrupted work is marked.
+  - **Workflow 1** reads the BOI and ICICI anonymised copies without ruled lines identically, and leaves the SBI copy (no heading words) to the agent.
+  - **End to end** (`experiments/pipeline_holdout.py`): each golden statement went through the real pipeline with no templates and the agent limited to the local model.
+    - All 3 were learned by the model in 11–14 s, re-extracted with the learned template, and are identical to golden.
+    - SBI: `EXTRACTED` at once, learned in the background. BOI and ICICI: `LEARNING`, then `NEEDS_REVIEW`. They print no opening balance, the same warning their approved templates give today.
+
+### D-023 correction — dates were not compared in the 10.1–10.3 evidence (2026-10-15)
+
+- **What went wrong:** the comparisons behind "identical" used the key `date`, but transactions store `txn_date`. Transaction dates were therefore not compared, in `experiments/llm_choice.py`, `llm_holdout.py`, `pipeline_holdout.py` and the "core" tests in `tests/test_llm_proposer.py`. Money, descriptions, references and value dates were compared correctly.
+- **Fixed and re-verified with dates included:**
+  - the deterministic check: all 10 benchmark cases are identical with the correct roles, and the 9b's roles equalled them on all 10;
+  - `llm_holdout.py` and `pipeline_holdout.py`: 3/3 identical to golden;
+  - the tests pass.
+- **Conclusions unchanged.**
+
+## D-024 — The system's self-review of each statement, and the owner's verdicts on it (Stage 10.4)
+
+- **Date:** 2026-10-15
+- **Owner:** approved the plan (requirement from D-020: the agent reviews its own work, and the owner reviews that review).
+- **Problem:** the review screen showed the output and the validation checks, but not *why* a value deserves trust, which values no check covers (descriptions, names), or how the layout was learned. Stage 11 (autonomy) needs a record of where the system's confidence matched the owner.
+- **Decision:**
+  - **Deterministic, not written by the model.** `self_review.build_self_review` uses only:
+    - the validation report;
+    - which rule found each account field (`apply_header_rules(..., sources)`, recorded in `ExtractionResult.field_sources`);
+    - the template's provenance;
+    - the agent job.
+
+    It cannot claim a check that never ran, and it costs nothing. It uses field names, counts, row numbers and check codes, never values or issue messages, which can contain amounts.
+  - **Contents:**
+    - summary;
+    - **what I checked:** balance chain on N of M rows, printed figures matched, dates in order and inside the period;
+    - **what I'm unsure of:** each item with an id and a field;
+    - **confidence per field:**
+      - `high`: an independent check confirms it;
+      - `medium`: a rule found it, nothing independent confirms it;
+      - `low`: a check questioned it;
+      - `missing`.
+    - **how the template was made:** rules, heading words or the local model with the model name; debit/credit decided by the balance chain.
+  - **Storage:** additive columns `extractions.self_review_json` (written when the extraction is stored; older ones are computed on request, with field sources "not recorded") and `reviews.agent_feedback_json` (the owner's Agree/Disagree plus an optional note per item; only listed item ids accepted; saving a review without feedback keeps the stored verdicts).
+  - **Calibration:** `GET /review` compares the owner's marks with the confidence ratings: fields marked wrong or missing that were rated high, and rows marked wrong that were not among the unsure items. Computed, not stored. This is the record Stage 11 builds on.
+- **Evidence:**
+  - `tests/test_self_review.py`:
+    - money high and text medium on a verified statement;
+    - no statement value appears in the self-review;
+    - row 1 flagged when no opening balance is printed;
+    - a broken balance rates that row low;
+    - an unlabelled-position field is listed with its reason;
+    - a model-learned template says so;
+    - calibration counts;
+    - the feedback round trip, including refusals.
+  - **On the 3 real statements:**
+    - money verified on 17/18, 81/81 and 35/36 rows (row 1 of ICICI and BOI has no opening balance);
+    - SBI also matches all six printed figures;
+    - the unsure items name the descriptions and the account fields read by position or by a general rule.
+  - `regress` 3 × PASS: the output is unchanged.

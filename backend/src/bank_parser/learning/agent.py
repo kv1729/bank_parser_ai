@@ -6,7 +6,7 @@ to leave behind a reusable, deterministic template so the next statement of
 this layout takes the fast known-template path.
 
 Bounded loop:  propose -> extract -> validate -> regression -> golden gate -> save | refine
-Limits: candidates, refinements, wall-clock time and (future) LLM tokens.
+Limits: candidates, refinements, wall-clock time and local-model tokens (D-023).
 Outcome: ACCEPTED (template saved as a new version), or HUMAN_REVIEW with
 reasons. It never overwrites a template (DECISIONS.md D-009, D-011).
 """
@@ -33,7 +33,7 @@ class LearningBudget:
     max_candidates: int = 3
     max_refinements: int = 2
     max_seconds: float = 300.0
-    max_llm_tokens: int = 0          # 0 = no LLM calls permitted
+    max_llm_tokens: int = 0          # 0 = no model calls permitted (the local model, D-023)
 
 
 @dataclass
@@ -54,11 +54,14 @@ class RegressionDoc:
 
 
 class LearningContext:
-    def __init__(self, doc, cells_doc, text, document_id, registry):
+    def __init__(self, doc, cells_doc, text, document_id, registry, llm_tokens=0):
         self.doc, self.cells_doc, self.text = doc, cells_doc, text
         self.document_id = document_id
         self.registry = registry
         self.notes = []
+        self.llm_tokens_left = llm_tokens
+        self.llm_tokens_used = 0
+        self.llm_view = None           # the table found for the local model (learning/llm_view.py)
 
     def next_version(self, bank_code, layout_id):
         return self.registry.next_version(bank_code, layout_id)
@@ -106,7 +109,7 @@ class TemplateAgent:
         self.regression_docs = list(regression_docs)
         self.budget = budget
         self.backend = backend
-        self.proposers = proposers or [HeuristicProposer(), LLMProposer(enabled=False)]
+        self.proposers = list(proposers) if proposers is not None else [HeuristicProposer(), LLMProposer()]
         self._texts = detection_texts if detection_texts is not None else {}
 
     def _regression_text(self, rd):
@@ -142,7 +145,7 @@ class TemplateAgent:
 
         with open_pdf(path, password, self.backend) as doc, open_pdf(path, password, "pdfplumber") as cells_doc:
             own_text = detection_text(doc)
-            ctx = LearningContext(doc, cells_doc, own_text, document_id, self.registry)
+            ctx = LearningContext(doc, cells_doc, own_text, document_id, self.registry, self.budget.max_llm_tokens)
             evaluated = 0
             for proposer in self.proposers:
                 if not proposer.available():
@@ -168,7 +171,8 @@ class TemplateAgent:
                         attempts.append({"proposer": proposer.name, "layout": candidate.layout_id,
                                          "columns": [c.role for c in candidate.table.columns],
                                          "markers": len(candidate.markers), "rows": len(result.statement.transactions),
-                                         "validation": report.status.value, "accepted": ok, "reason": why})
+                                         "validation": report.status.value, "accepted": ok, "reason": why,
+                                         "llm_tokens": ctx.llm_tokens_used})
                         if ok:
                             try:
                                 self.registry.save(candidate)

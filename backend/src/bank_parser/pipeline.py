@@ -24,11 +24,14 @@ from bank_parser.extraction.select import extract_known
 from bank_parser.golden import golden_gate
 from bank_parser.extraction.unknown import STRATEGY as UNKNOWN_STRATEGY, extract_unknown
 from bank_parser.learning import LearningBudget, RegressionDoc, TemplateAgent
+from bank_parser.learning.proposers import HeuristicProposer, LLMProposer
+from bank_parser.llm.ollama import OllamaClient
 from bank_parser.pdf import MalformedPdf, PasswordRequired, PdfKind, classify, open_pdf
 from bank_parser.core.schema import statement_to_dict
 from bank_parser.storage import Database, DocumentStore
 from bank_parser.templates import TemplateRegistry
 from bank_parser.core.validation import report_to_dict, validate_statement
+from bank_parser.self_review import build_self_review
 
 log = logging.getLogger("bank_parser")   # never log statement content, names or numbers
 
@@ -38,6 +41,7 @@ class DocStatus:
     PROCESSING = "PROCESSING"
     EXTRACTED = "EXTRACTED"            # validated: arithmetic verified, nothing failed
     NEEDS_REVIEW = "NEEDS_REVIEW"      # extracted but not verified, or validation failed
+    LEARNING = "LEARNING"              # unknown layout not verified yet: the template agent is learning it
     NEEDS_PASSWORD = "NEEDS_PASSWORD"
     NEEDS_OCR = "NEEDS_OCR"            # no text layer: OCR is a later phase
     FAILED = "FAILED"
@@ -73,9 +77,19 @@ def run_learning_job(settings, job_id, document_id, path, password):
         registry = build_registry(settings)
         budget = LearningBudget(max_candidates=settings.learning_max_candidates,
                                 max_refinements=settings.learning_max_refinements,
-                                max_seconds=settings.learning_max_seconds)
+                                max_seconds=settings.learning_max_seconds,
+                                max_llm_tokens=settings.llm_max_tokens)
+        # The heuristic proposer goes first; the local model is asked only when it fails (D-023).
+        proposers = []
+        for name in settings.learning_proposers:
+            if name == "heuristic":
+                proposers.append(HeuristicProposer())
+            elif name == "llm" and settings.llm_max_tokens > 0:
+                proposers.append(LLMProposer(OllamaClient(settings.llm_url), settings.llm_model))
+            elif name != "llm":
+                raise ValueError(f"unknown learning proposer {name!r}")
         agent = TemplateAgent(registry, regression_corpus(settings, db), budget, backend=settings.pdf_backend,
-                              golden_check=golden_gate(db, settings))
+                              proposers=proposers, golden_check=golden_gate(db, settings))
         outcome = agent.learn(path, password, document_id)
         db.update_template_job(job_id, status=outcome.status.value, template_id=outcome.template_id,
                                reason=outcome.reason, attempts=outcome.attempts, duration_ms=outcome.duration_ms)
@@ -151,19 +165,28 @@ class Processor:
                               {"classify_ms": _ms(t0, t_classify), "detect_ms": _ms(t_classify, t_detect)}, cls)
                 return self._finish(document_id, report, result)
 
-            # Unknown layout (or every matching template failed): start learning first, never wait for it.
-            self._start_learning(document_id, path, password)
+            # Unknown layout (or every matching template failed): extract now, then learn in the
+            # background. Learning starts only after this result is stored, so a re-extraction with
+            # the learned template can never be overtaken by this older result (D-023).
             result, report = extract_unknown(doc, path, password, document_id)
         timings = {"classify_ms": _ms(t0, t_classify), "detect_ms": _ms(t_classify, t_detect)}
         if result.statement is None:
             db.add_extraction(document_id, "unknown_layout", UNKNOWN_STRATEGY, None,
                               {"status": "FAIL", "verified": False, "checks": []}, None,
                               [p.__dict__ for p in result.problems], dict(result.timings_ms, **timings))
-            db.update_document(document_id, status=DocStatus.NEEDS_REVIEW,
-                               error="no transaction table could be inferred; awaiting template learning or review")
-            return DocStatus.NEEDS_REVIEW
-        self._persist(document_id, "unknown_layout", UNKNOWN_STRATEGY, None, result, report, timings, cls)
-        return self._finish(document_id, report, result)
+            status = self._learning(document_id)
+        else:
+            self._persist(document_id, "unknown_layout", UNKNOWN_STRATEGY, None, result, report, timings, cls)
+            status = self._finish(document_id, report, result)
+            if status != DocStatus.EXTRACTED:
+                status = self._learning(document_id)
+        self._start_learning(document_id, path, password)
+        return status
+
+    def _learning(self, document_id):
+        self.db.update_document(document_id, status=DocStatus.LEARNING,
+                                error="learning this layout; the checked result will appear here")
+        return DocStatus.LEARNING
 
     def _persist(self, document_id, workflow, strategy, template_id, result, report, timings, cls=None):
         data = statement_to_dict(result.statement)
@@ -171,8 +194,12 @@ class Processor:
         if cls is not None and cls.needs_ocr_pages:
             problems.append({"code": "pages_need_ocr", "message": f"pages without text: {list(cls.needs_ocr_pages)}",
                              "page": None, "row_index": None})
-        self.db.add_extraction(document_id, workflow, strategy, template_id, report_to_dict(report), data,
-                               problems, dict(result.timings_ms, **timings))
+        report_d = report_to_dict(report)
+        template = self.registry.get(template_id) if template_id else None
+        job = self.db.latest_template_job(document_id) if template is not None else None
+        review = build_self_review(data, report_d, result.field_sources, template, job)
+        self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
+                               problems, dict(result.timings_ms, **timings), review)
 
     def _finish(self, document_id, report, result):
         ok = report.verified and not result.problems
@@ -187,21 +214,28 @@ class Processor:
         with self._lock:
             self._inflight += 1
         fut = self._learn_pool.submit(run_learning_job, self.settings, job_id, document_id, str(path), password)
-        fut.add_done_callback(lambda f: self._learning_done(document_id, password, f))
+        fut.add_done_callback(lambda f: self._learning_done(document_id, password, f, job_id))
         with self._lock:
             self._futures.append(fut)
         return job_id
 
-    def _learning_done(self, document_id, password, fut):
+    def _learning_done(self, document_id, password, fut, job_id=None):
         try:
             try:
                 status, template_id = fut.result()
-            except Exception:
+            except Exception as e:          # the learner itself crashed: close its job, never echo content
                 status, template_id = "FAILED", None
+                if job_id is not None:
+                    self.db.update_template_job(job_id, status="FAILED", reason=f"learner crashed: {type(e).__name__}")
             if status == "ACCEPTED" and template_id:
                 self.registry.reload()
                 # Re-extract with the new template so the stored result reflects the reusable path.
                 self.submit_reextract(document_id, password, template_id)
+            elif self.db.get_document(document_id)["status"] == DocStatus.LEARNING:
+                job = self.db.latest_template_job(document_id) or {}
+                why = job.get("reason") or status
+                self.db.update_document(document_id, status=DocStatus.NEEDS_REVIEW,
+                                        error=f"the layout could not be learned automatically ({why}); review required")
             if self.on_learning_done:
                 self.on_learning_done(document_id, status, template_id)
         finally:

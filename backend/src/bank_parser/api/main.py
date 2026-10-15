@@ -18,7 +18,8 @@ from bank_parser.golden import GoldenError, check_approvable, diff, snapshot
 from bank_parser.pdf import MalformedPdf, PasswordRequired, open_pdf
 from bank_parser.pdf.render import render_page_png
 from bank_parser.pipeline import DocStatus, Processor
-from bank_parser.review import PasswordVault, ReviewError, ReviewSources, SourceDir, validate_review
+from bank_parser.review import PasswordVault, ReviewError, ReviewSources, SourceDir, validate_agent_feedback, validate_review
+from bank_parser.self_review import build_self_review, calibration
 from bank_parser.storage import UploadTooLarge
 from bank_parser.templates import template_to_dict
 
@@ -35,6 +36,7 @@ def create_app(settings=None, learning_mode="process"):
     @asynccontextmanager
     async def lifespan(app):
         state["processor"] = Processor(settings, learning_mode=learning_mode)
+        state["processor"].db.mark_interrupted()      # work from before a restart never finishes
         yield
         state["processor"].shutdown()
 
@@ -69,7 +71,9 @@ def create_app(settings=None, learning_mode="process"):
         vault.put(stored.document_id, password)
         doc = p.db.get_document(stored.document_id)
         done = doc["status"] in (DocStatus.EXTRACTED,)
-        if not done or reprocess or (doc["status"] == DocStatus.NEEDS_PASSWORD and password):
+        # Already being processed or learned: a second upload must not start a second learning job.
+        busy = doc["status"] in (DocStatus.PROCESSING, DocStatus.LEARNING)
+        if not busy and (not done or reprocess or (doc["status"] == DocStatus.NEEDS_PASSWORD and password)):
             p.submit(stored.document_id, password or None)
         return {"document_id": stored.document_id, "duplicate": stored.already_existed,
                 "size_bytes": stored.size_bytes}
@@ -87,11 +91,20 @@ def create_app(settings=None, learning_mode="process"):
         return [{k: d[k] for k in ("id", "original_name", "size_bytes", "page_count", "status", "created_at")}
                 for d in proc().db.list_documents()]
 
+    def with_self_review(ex):
+        """Extractions stored before self-reviews existed get one computed now (field sources unknown)."""
+        if ex and ex.get("self_review") is None and ex.get("statement") is not None:
+            p = proc()
+            template = p.registry.get(ex["template_id"]) if ex.get("template_id") else None
+            ex["self_review"] = build_self_review(ex["statement"], ex["report"], None, template,
+                                                  p.db.latest_template_job(ex["document_id"]))
+        return ex
+
     @app.get("/api/documents/{document_id}")
     def get_document(document_id: str):
         p = proc()
         doc = require_document(document_id)
-        return {"document": doc, "extraction": p.db.latest_extraction(document_id),
+        return {"document": doc, "extraction": with_self_review(p.db.latest_extraction(document_id)),
                 "template_job": p.db.latest_template_job(document_id)}
 
     @app.get("/api/templates")
@@ -139,7 +152,8 @@ def create_app(settings=None, learning_mode="process"):
         password = sources.default_password(source_dir, path)
         vault.put(stored.document_id, password)
         doc = p.db.get_document(stored.document_id)
-        if doc["status"] not in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW) or not p.db.latest_extraction(stored.document_id):
+        settled = doc["status"] in (DocStatus.EXTRACTED, DocStatus.NEEDS_REVIEW) and p.db.latest_extraction(stored.document_id)
+        if not settled and doc["status"] not in (DocStatus.PROCESSING, DocStatus.LEARNING):
             p.submit(stored.document_id, password)
         return {"document_id": stored.document_id, "duplicate": stored.already_existed}
 
@@ -147,7 +161,9 @@ def create_app(settings=None, learning_mode="process"):
     def reprocess(document_id: str):
         """Extract again with the current code and templates. The result is a new extraction;
         reviews stay attached to the extraction they were made against."""
-        require_document(document_id)
+        doc = require_document(document_id)
+        if doc["status"] in (DocStatus.PROCESSING, DocStatus.LEARNING):
+            raise HTTPException(409, "this statement is still being processed or learned; try again when it is done")
         password = vault.get(document_id)
         if password is None:
             for s in sources.list():
@@ -195,7 +211,9 @@ def create_app(settings=None, learning_mode="process"):
         review = p.db.get_review(document_id, ex["id"])
         # A re-extraction starts without a review; show the last one so it is not lost from view.
         previous = None if review else p.db.previous_review(document_id, ex["id"])
-        return {"extraction_id": ex["id"], "review": review, "previous": previous}
+        self_review = with_self_review(ex).get("self_review")
+        return {"extraction_id": ex["id"], "review": review, "previous": previous,
+                "self_review": self_review, "calibration": calibration(self_review, review)}
 
     @app.put("/api/documents/{document_id}/review")
     def save_review(document_id: str, body: dict = Body(...)):
@@ -207,9 +225,13 @@ def create_app(settings=None, learning_mode="process"):
         try:
             flags, remarks, missing = validate_review(ex["statement"], body.get("flags", []), body.get("remarks", ""),
                                                       body.get("missing", []))
+            feedback = None
+            if "agent_feedback" in body:
+                items = (with_self_review(ex).get("self_review") or {}).get("unsure", [])
+                feedback = validate_agent_feedback(body["agent_feedback"], {i["id"] for i in items})
         except ReviewError as e:
             raise HTTPException(400, str(e))
-        return p.db.save_review(document_id, ex["id"], flags, remarks, missing)
+        return p.db.save_review(document_id, ex["id"], flags, remarks, missing, feedback)
 
     # --- golden statements (Stage 9, D-022) ---------------------------------------------------
 

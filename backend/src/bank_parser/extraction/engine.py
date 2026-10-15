@@ -13,6 +13,7 @@ class ExtractionResult:
     statement: Statement | None
     problems: tuple[Problem, ...] = ()
     timings_ms: dict = field(default_factory=dict)
+    field_sources: dict = field(default_factory=dict)    # {header target: which rule found it} (D-024)
 
 
 def _pages_needed_by_rules(rules, page_count):
@@ -72,10 +73,12 @@ def extract_with_template(doc, template, document_id=None, strategy="template"):
     rows, problems = assemble_rows(pages(), template.table)
     t1 = time.perf_counter()
     txns, row_problems = rows_to_transactions(rows, template.table)
+    sources = {}
     values, header_problems = apply_header_rules(template.header_rules, kept, count, template.table.date_formats,
-                                                 template.table.line_tolerance)
+                                                 template.table.line_tolerance, sources)
     statement = build_statement(values, txns, template, document_id=document_id, strategy=strategy,
                                 backend=doc.backend, page_count=count)
     t2 = time.perf_counter()
     return ExtractionResult(statement, tuple(problems) + tuple(row_problems) + tuple(header_problems),
-                            {"layout_and_rows": round((t1 - t0) * 1000, 1), "normalize": round((t2 - t1) * 1000, 1)})
+                            {"layout_and_rows": round((t1 - t0) * 1000, 1), "normalize": round((t2 - t1) * 1000, 1)},
+                            sources)

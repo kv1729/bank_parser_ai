@@ -93,8 +93,14 @@ class Database:
         with self.connect() as c:
             c.executescript(SCHEMA)
             # Additive migration (D-021): outputs the reviewer marks as printed but not extracted.
-            if "missing_json" not in {r["name"] for r in c.execute("PRAGMA table_info(reviews)")}:
+            review_cols = {r["name"] for r in c.execute("PRAGMA table_info(reviews)")}
+            if "missing_json" not in review_cols:
                 c.execute("ALTER TABLE reviews ADD COLUMN missing_json TEXT NOT NULL DEFAULT '[]'")
+            # Additive migrations (D-024): the system's self-review, and the owner's verdicts on it.
+            if "agent_feedback_json" not in review_cols:
+                c.execute("ALTER TABLE reviews ADD COLUMN agent_feedback_json TEXT")
+            if "self_review_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
+                c.execute("ALTER TABLE extractions ADD COLUMN self_review_json TEXT")
 
     @contextmanager
     def connect(self):
@@ -121,6 +127,20 @@ class Database:
         with self.connect() as c:
             c.execute(f"UPDATE documents SET {cols} WHERE id = ?", (*fields.values(), doc_id))
 
+    def mark_interrupted(self):
+        """At app start: work that was running when the app stopped will never finish (jobs do not
+        survive a restart, CHECKPOINT G4). Mark it so the statement can be processed again.
+        Only status fields change; extractions and reviews are kept. Returns the documents marked."""
+        now = utcnow()
+        with self.connect() as c:
+            ids = [r[0] for r in c.execute("SELECT id FROM documents WHERE status IN ('PROCESSING', 'LEARNING')")]
+            c.execute("""UPDATE documents SET status = 'NEEDS_REVIEW', updated_at = ?,
+                         error = 'interrupted: the app stopped while this statement was being processed or learned; reprocess it'
+                         WHERE status IN ('PROCESSING', 'LEARNING')""", (now,))
+            c.execute("""UPDATE template_jobs SET status = 'FAILED', reason = 'interrupted: the app stopped', updated_at = ?
+                         WHERE status IN ('QUEUED', 'RUNNING')""", (now,))
+        return ids
+
     def get_document(self, doc_id):
         with self.connect() as c:
             row = c.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
@@ -132,15 +152,17 @@ class Database:
         return [dict(r) for r in rows]
 
     # --- extractions --------------------------------------------------------
-    def add_extraction(self, doc_id, workflow, strategy, template_id, report, statement, problems, timings):
+    def add_extraction(self, doc_id, workflow, strategy, template_id, report, statement, problems, timings,
+                       self_review=None):
         with self.connect() as c:
             cur = c.execute(
                 """INSERT INTO extractions(document_id, workflow, strategy, template_id, validation_status, verified,
-                   report_json, statement_json, problems_json, timings_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   report_json, statement_json, problems_json, timings_json, created_at, self_review_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (doc_id, workflow, strategy, template_id, report["status"], int(report["verified"]),
                  json.dumps(report), json.dumps(statement) if statement is not None else None,
-                 json.dumps(problems), json.dumps(timings), utcnow()))
+                 json.dumps(problems), json.dumps(timings), utcnow(),
+                 json.dumps(self_review) if self_review is not None else None))
             return cur.lastrowid
 
     def latest_extraction(self, doc_id):
@@ -149,9 +171,13 @@ class Database:
                             (doc_id,)).fetchone()
         if not row:
             return None
+        return self._extraction_row(row)
+
+    @staticmethod
+    def _extraction_row(row):
         out = dict(row)
-        for k in ("report_json", "statement_json", "problems_json", "timings_json"):
-            out[k[:-5]] = json.loads(out.pop(k)) if out[k] else None
+        for k in ("report_json", "statement_json", "problems_json", "timings_json", "self_review_json"):
+            out[k[:-5]] = json.loads(out.pop(k)) if out.get(k) else None
         return out
 
     def verified_documents(self):
@@ -190,19 +216,22 @@ class Database:
         return out
 
     # --- human review -------------------------------------------------------------
-    def save_review(self, doc_id, extraction_id, flags, remarks, missing=()):
+    def save_review(self, doc_id, extraction_id, flags, remarks, missing=(), agent_feedback=None):
         """One review per (document, extraction); saving again updates it in place.
-        `flags`: outputs marked wrong; `missing`: outputs printed on the statement but not extracted."""
+        `flags`: outputs marked wrong; `missing`: outputs printed on the statement but not extracted;
+        `agent_feedback`: the owner's verdicts on the self-review (None keeps the stored ones)."""
         now = utcnow()
+        feedback = json.dumps(agent_feedback, sort_keys=True) if agent_feedback is not None else None
         with self.connect() as c:
             c.execute("""INSERT INTO reviews(document_id, extraction_id, flags_json, missing_json, remarks,
-                                             created_at, updated_at)
-                         VALUES (?, ?, ?, ?, ?, ?, ?)
+                                             created_at, updated_at, agent_feedback_json)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                          ON CONFLICT(document_id, extraction_id) DO UPDATE SET
                            flags_json = excluded.flags_json, missing_json = excluded.missing_json,
-                           remarks = excluded.remarks, updated_at = excluded.updated_at""",
+                           remarks = excluded.remarks, updated_at = excluded.updated_at,
+                           agent_feedback_json = COALESCE(excluded.agent_feedback_json, reviews.agent_feedback_json)""",
                       (doc_id, extraction_id, json.dumps(sorted(set(flags))), json.dumps(sorted(set(missing))),
-                       remarks, now, now))
+                       remarks, now, now, feedback))
         return self.get_review(doc_id, extraction_id)
 
     @staticmethod
@@ -212,6 +241,7 @@ class Database:
         out = dict(row)
         out["flags"] = json.loads(out.pop("flags_json"))
         out["missing"] = json.loads(out.pop("missing_json") or "[]")
+        out["agent_feedback"] = json.loads(out.pop("agent_feedback_json", None) or "{}")
         return out
 
     def get_review(self, doc_id, extraction_id):
@@ -232,10 +262,7 @@ class Database:
             row = c.execute("SELECT * FROM extractions WHERE id = ?", (extraction_id,)).fetchone()
         if not row:
             return None
-        out = dict(row)
-        for k in ("report_json", "statement_json", "problems_json", "timings_json"):
-            out[k[:-5]] = json.loads(out.pop(k)) if out[k] else None
-        return out
+        return self._extraction_row(row)
 
     # --- golden statements ----------------------------------------------------------
     def add_golden(self, doc_id, extraction_id, snapshot, workflow, template_id, backend, engine_commit,

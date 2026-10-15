@@ -64,11 +64,13 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 | `extraction/header.py` | Header rules: `regex`, positional `region`, and labelled multi-line `block` rules (D-021). Templates with a rule kind the code does not know are rejected at load |
 | `extraction/select.py` | Which template extracts a document (newest, most specific, first that validates); shared by Workflow 1, `regress` and the agent gate (D-022) |
 | `pdf/json_layout.py` | Recorded page layouts (positioned words as JSON) served as a document; used by the anonymised layout fixtures |
+| `self_review.py` | The system's review of each extraction: what was checked, what is unsure, confidence per field; calibration against the owner's marks (D-024) |
 | `golden.py` | Golden statements: snapshot, field-by-field diff, approval rules, regression run, agent gate (D-022) |
 | `extraction/inference.py`, `unknown.py` | Unknown-layout inference and Workflow 1 |
 | `extraction/generic_rules.py` | Layout-independent header rules; bank identity from the account's IFSC |
 | `core/validation.py` | Balance chain, reconciliation, rows, header → `PASS / WARN / FAIL / SKIP` report |
-| `learning/` | Template agent, proposers, privacy-safe markers |
+| `learning/` | Template agent, proposers, privacy-safe markers; `llm_view.py` finds tables without ruled cells and checks column labels against their content (D-023) |
+| `llm/ollama.py` | Client for the local model server; refuses any host but this computer (D-023) |
 | `storage/` | Content-addressed file store, SQLite |
 | `pipeline.py` | Orchestration; separate extraction and learning pools |
 | `api/` | FastAPI routes; the UI pages live in top-level `frontend/` (`index.html` upload, `review.html` verification) |

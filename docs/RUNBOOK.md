@@ -1,6 +1,6 @@
 # Runbook — set up, start, use and stop the app
 
-*Step-by-step reference for running the bank statement parser on your machine (Windows). Updated 2026-10-07.*
+*Step-by-step reference for running the bank statement parser on your machine (Windows). Updated 2026-10-15.*
 
 ## 0. What actually runs
 
@@ -12,6 +12,7 @@ There is **one program to start**: the backend server. It also serves both web p
 | Web pages (upload, review) | `frontend/` | No — served by the backend |
 | Database (SQLite) | `data/bank_parser.db` | No — a file, created automatically |
 | Template learning | inside the backend | No — runs automatically in the background |
+| Local AI model (Ollama) | installed program, model `qwen3.5:9b` | No — Ollama starts with Windows; the app uses it only for layouts its rules cannot learn (section 5b) |
 
 Two pages, both on http://127.0.0.1:8000:
 - **http://127.0.0.1:8000/** — upload a statement and watch it process.
@@ -29,6 +30,7 @@ Do these once. Each has a check so you know it worked.
 | 4 | Install the app's libraries | `cd backend` then `uv sync` | Ends without errors; `backend\.venv` exists |
 | 5 | Put private statements in place | Copy PDFs into `sample_data\` (not `data\documents\` — that is the app's internal store). Put their passwords in `sample_data\.pdf_password`, **one password per line**; each PDF is opened with whichever line works | Both are gitignored: `git status` does not list them |
 | 6 | Build the privacy list from your statements | from `backend\`: `uv run python scripts/refresh_sensitive_strings.py` | Prints `scanned N local statement(s)` |
+| 7 | (Optional) the local AI model | Install Ollama from ollama.com, then `ollama pull qwen3.5:9b` (6.6 GB download) | `ollama list` shows `qwen3.5:9b` |
 
 Repeat step 6 whenever you add a new private statement.
 
@@ -85,13 +87,15 @@ Open http://127.0.0.1:8000/review in your browser. The list of PDFs appears on t
 ### Upload page (`/`)
 1. Choose a PDF; type its password if it has one.
 2. Click **Upload**; the status updates by itself until `EXTRACTED`, `NEEDS_REVIEW`, `NEEDS_PASSWORD` or `NEEDS_OCR`.
+3. **`LEARNING`** means the layout is new and the first attempt could not be verified. The template agent is learning it in the background, using the local AI model if the rules cannot, which can take a minute. Leave the page open: the checked result replaces the status by itself (`EXTRACTED`, or `NEEDS_REVIEW` with the agent's reason if it could not learn the layout). While a statement is `LEARNING`, uploading it again or **Re-extract** does nothing (one learning job per statement). If the app is stopped meanwhile, the statement shows `NEEDS_REVIEW` ("interrupted") after the restart: reprocess it.
 
 ### Review page (`/review`)
 1. **Left:** pick a PDF. Files from `sample_data\` are imported and processed on first click; password-protected ones use `sample_data\.pdf_password`, otherwise the page asks for the password (kept in memory only).
 2. **Middle:** scroll the PDF.
 3. **Right:** for each account field choose **OK**, **Wrong**, or **Missing** (printed on the statement but not extracted, or only partly extracted). Tick a transaction row if any of its values is wrong; describe rows the extractor missed in **Remarks**. It saves automatically; the bar at the bottom of the panel always shows **Saved ✓** with the time in IST, or **Save failed: …** (then press **Save review** again).
 4. Click a transaction to jump to its page. Amber-edged rows are ones the validator questioned.
-5. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction; the page shows a note about it with **Copy that review here**.
+5. **Agent's self-review** (box above the account fields): what the system checked, what it is unsure of, and a confidence tag next to every field and column (hover for the reason). For each "unsure" item click **Agree** (it deserved a look) or **Disagree** (the worry was wrong or not useful), with an optional note. It saves with your review. Once you have marked fields, a **Calibration** line says whether anything you marked wrong had been rated high.
+6. After a code fix, click **Re-extract with current code** (top right, next to the extraction number) to get fresh output. Your previous review stays with the previous extraction; the page shows a note about it with **Copy that review here**.
 
 ## 4a. See the extracted output without the UI
 
@@ -160,6 +164,26 @@ uv run python scripts/anonymise_layout.py --doc <first 8 characters of the docum
 It prints only checks and counts, and refuses if any real word would survive. Look at the preview pictures it lists (`data\exports\layout-preview\<name>\page-N.png`) before committing `backend\tests\fixtures\layouts\<name>\`.
 
 It also runs automatically before every `git push` (`.githooks/pre-push`). A failing check blocks the push. Don't bypass it with `--no-verify`; re-approve in `/review` if the change is intended. Reports are saved in `data\regress\`.
+
+## 5b. The local AI model (Stage 10)
+
+When a statement arrives whose layout no template knows and the rules cannot learn it, the template agent asks a **local** model to name the table's columns (date, description, debit, …). Code then builds the template and checks it exactly like any other: the arithmetic, the column contents, other layouts, and the golden statements. The model runs on this computer through Ollama; nothing is sent anywhere else, and the app refuses any model server that is not on this computer.
+
+| What | Detail |
+| --- | --- |
+| Model | `qwen3.5:9b` (Apache-2.0), chosen by the benchmark in D-023 |
+| Cost per new layout | about 20–30 s and 6.4 GB of memory while it runs; known layouts never use it |
+| Turn it off | set `BANK_PARSER_LLM_MAX_TOKENS=0` before starting the app |
+| Another model | `BANK_PARSER_LLM_MODEL=<name>` (it must be installed: `ollama pull <name>`) |
+| Ollama not running / model missing | the agent skips the AI step and works as before |
+
+**Re-run the model benchmark** (from `backend\`; prints scores only):
+
+```powershell
+uv run python experiments/llm_choice.py --model qwen3.5:9b
+```
+
+Follow its progress in another window: `Get-Content ..\data\exports\llm-choice\progress.log -Wait`. The report is saved in `data\exports\llm-choice\`.
 
 ## 6. Tests and timings (optional)
 

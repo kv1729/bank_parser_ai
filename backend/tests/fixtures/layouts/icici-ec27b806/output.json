@@ -1,0 +1,313 @@
+{
+ "template_id": "icici/layout-ec27b806/v2",
+ "validation_status": "WARN",
+ "statement": {
+  "schema_version": "2",
+  "header": {
+   "bank_name": "ICICI Bank",
+   "bank_address": "91, CQHM TTOL JGTI, JZB MDA YQHO AZXMB, YDDKG, , WURPV, KF, IN",
+   "account_holder_name": "WOWKVQ QSMK",
+   "account_holder_address": "P - 3,MCUZQLZQ YLXHCMMBR 10 /,4, KKATSLVFOKXU DECN,WTYA OXKLVV URYNSW, WSIMYECOYXLIP - INDIA - 004447",
+   "account_number": "992928372191",
+   "ifsc": null,
+   "branch": "ICICI BANK KFJWPSH",
+   "currency": "INR",
+   "period_start": "2018-09-02",
+   "period_end": "2018-09-30",
+   "opening_balance": null,
+   "closing_balance": null,
+   "extra": {}
+  },
+  "transactions": [
+   {
+    "row_index": 0,
+    "page": 1,
+    "txn_date": "2018-09-02",
+    "value_date": null,
+    "description": "WOWKVQ ZUS UMK/ZIYNSG CWK/gdmdax.blimdn6/CEE/Zxyil Blwe/030488004158/WYX7150ia19pw03023r535403 21xs93hd35 riqe zztg2",
+    "reference": null,
+    "debit": "22886.38",
+    "credit": null,
+    "balance": "327972.48",
+    "amount": "22886.38",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "1"
+    }
+   },
+   {
+    "row_index": 1,
+    "page": 1,
+    "txn_date": "2018-09-07",
+    "value_date": null,
+    "description": "AAO/zsqp ptov0/PXozji@hyz/JCZ/ZMPL/592667477693/MNJl 6dh79236b25547h66c5rd6qb02f644x Hvkow",
+    "reference": null,
+    "debit": "7334.48",
+    "credit": null,
+    "balance": "320638.00",
+    "amount": "7334.48",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "2"
+    }
+   },
+   {
+    "row_index": 2,
+    "page": 1,
+    "txn_date": "2018-09-07",
+    "value_date": null,
+    "description": "DJH/Olfcu/SR3518@szt/ZAV/GOH BANK T/158972526394/DBFn581njb12r601o86l2c896194 7hji2f3 QBQSDC SHT",
+    "reference": null,
+    "debit": "6272.75",
+    "credit": null,
+    "balance": "314365.25",
+    "amount": "6272.75",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "3"
+    }
+   },
+   {
+    "row_index": 3,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "VLL/PMKPBV BOS/AT3255@vnv/NYQ/CFH BANK B/067742385232/VVSmdsfd832ff4o1b62x6297180s v57i4kf Sp Olbuj",
+    "reference": null,
+    "debit": "20199.86",
+    "credit": null,
+    "balance": "294165.39",
+    "amount": "20199.86",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "4"
+    }
+   },
+   {
+    "row_index": 4,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "IVY/Bm Tbkij/DA7y2k@iyc/AXU/MNR BANK E/429272090564/MCA69685co51d5e3653bc357366 7k188i50 BWJEG",
+    "reference": null,
+    "debit": "24790.95",
+    "credit": null,
+    "balance": "269374.44",
+    "amount": "24790.95",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "5"
+    }
+   },
+   {
+    "row_index": 5,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "OGD/MVYLV/FG3xg6@rdm/NDE/VPQ BANK T/932724095068/TIUy10037qb44i108c76du83960h hnyjk89 Vwqww Ykm",
+    "reference": null,
+    "debit": "21304.82",
+    "credit": null,
+    "balance": "248069.62",
+    "amount": "21304.82",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "6"
+    }
+   },
+   {
+    "row_index": 6,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "RIX/Dzysq Xra/UY77z3@sgay/JLW/UDE BANK O/843686237854/QQCi111c7dcpd79733748qm3341i 2109n33 Vwqww Ykm",
+    "reference": null,
+    "debit": "13873.41",
+    "credit": null,
+    "balance": "234196.21",
+    "amount": "13873.41",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "7"
+    }
+   },
+   {
+    "row_index": 7,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "RIX/Dzysq Xra/UY77z3@sgay/JLW/UDE BANK I/757037157743/SURd85qv0s0wevp39v1w7k03tygk41 355i7 LRXVD MJM",
+    "reference": null,
+    "debit": "15013.53",
+    "credit": null,
+    "balance": "219182.68",
+    "amount": "15013.53",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "8"
+    }
+   },
+   {
+    "row_index": 8,
+    "page": 1,
+    "txn_date": "2018-09-08",
+    "value_date": null,
+    "description": "JUM/UBEFK FNZ/IN8916@eadtj/OYA/Ygioh Xpgp/086330855739/QXOg0b466487yg100406h4g4 uc47712qcqk JEGAJO",
+    "reference": null,
+    "debit": "13400.96",
+    "credit": null,
+    "balance": "205781.72",
+    "amount": "13400.96",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "9"
+    }
+   },
+   {
+    "row_index": 9,
+    "page": 1,
+    "txn_date": "2018-09-09",
+    "value_date": null,
+    "description": "NLA/FPKROJ/DP0381@bosg/BGO/Rizlv Ybtb/116817772358/DZQ252h3d951v06339vaeqf4g xh94057rxb WALI ZBLMD",
+    "reference": null,
+    "debit": "22073.28",
+    "credit": null,
+    "balance": "183708.44",
+    "amount": "22073.28",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "10"
+    }
+   },
+   {
+    "row_index": 10,
+    "page": 1,
+    "txn_date": "2018-09-10",
+    "value_date": null,
+    "description": "WLW/SXMQ IYEYU/YZz653@oqb/PHE/TYYJ KDOM/661826881606/VEU34135tp437bh409lbzp175 2r42bzd887 Rtmxed Msc",
+    "reference": null,
+    "debit": "14870.16",
+    "credit": null,
+    "balance": "168838.28",
+    "amount": "14870.16",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "11"
+    }
+   },
+   {
+    "row_index": 11,
+    "page": 1,
+    "txn_date": "2018-09-10",
+    "value_date": null,
+    "description": "GOY/Xjjqzt Iac/XWfn27@lanue/CEN/Tjrcn Jfds/635858459882/NAE4m276qt8y0437mf4p454u 6n86234iex0",
+    "reference": null,
+    "debit": null,
+    "credit": "18138.50",
+    "balance": "186976.78",
+    "amount": "18138.50",
+    "direction": "CREDIT",
+    "extra": {
+     "s_no": "12"
+    }
+   },
+   {
+    "row_index": 12,
+    "page": 2,
+    "txn_date": "2018-09-10",
+    "value_date": null,
+    "description": "FJTZZI CKD RWF/OLRBCW HGK/ZK4840@wepja/IMK/VHGIP Awnb/862529439245/PVH90cp5dh80573575vd73g48 5rq28hk91p OFFXTVQY E",
+    "reference": null,
+    "debit": "6390.27",
+    "credit": null,
+    "balance": "180586.51",
+    "amount": "6390.27",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "13"
+    }
+   },
+   {
+    "row_index": 13,
+    "page": 2,
+    "txn_date": "2018-09-11",
+    "value_date": null,
+    "description": "RCV/IBOCXYJX G/HLdezm@klwblpn/HZEQpdkxn/PGUT YXAI/667188897901/ZLPY860645345887171945 398393mw6w77x ZHGJX",
+    "reference": null,
+    "debit": "22873.93",
+    "credit": null,
+    "balance": "157712.58",
+    "amount": "22873.93",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "14"
+    }
+   },
+   {
+    "row_index": 14,
+    "page": 2,
+    "txn_date": "2018-09-11",
+    "value_date": null,
+    "description": "TEM/LQPWO/HBixql@kdadkzu/MXM/APSG IWWY/955001558999/KYHI132241150693122545 717042hz5zmg2 WOWKVQ ZUS",
+    "reference": null,
+    "debit": "18292.99",
+    "credit": null,
+    "balance": "139419.59",
+    "amount": "18292.99",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "15"
+    }
+   },
+   {
+    "row_index": 15,
+    "page": 2,
+    "txn_date": "2018-09-11",
+    "value_date": null,
+    "description": "UMK/ZIYNSG MKH/FC80-1@qondn/TRB/Nhlau Umkk/361617539138/KTWo376k3e8pmaj7ka070z9d4q g4u231913 Debit vrng",
+    "reference": null,
+    "debit": "13025.63",
+    "credit": null,
+    "balance": "126393.96",
+    "amount": "13025.63",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "16"
+    }
+   },
+   {
+    "row_index": 16,
+    "page": 2,
+    "txn_date": "2018-09-29",
+    "value_date": null,
+    "description": "MxlrUaq Chgs 51-38FTL95+NSX Credit vrng",
+    "reference": null,
+    "debit": "18577.40",
+    "credit": null,
+    "balance": "107816.56",
+    "amount": "18577.40",
+    "direction": "DEBIT",
+    "extra": {
+     "s_no": "17"
+    }
+   },
+   {
+    "row_index": 17,
+    "page": 2,
+    "txn_date": "2018-09-30",
+    "value_date": null,
+    "description": "767176706541:Dsf.Zf:82-51-8404 to 29-09-2018",
+    "reference": null,
+    "debit": null,
+    "credit": "11339.45",
+    "balance": "119156.01",
+    "amount": "11339.45",
+    "direction": "CREDIT",
+    "extra": {
+     "s_no": "18"
+    }
+   }
+  ],
+  "summary": null
+ }
+}

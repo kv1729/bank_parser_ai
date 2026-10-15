@@ -1,0 +1,1326 @@
+{
+ "template_id": "sbi/layout-d2e542a8/v3",
+ "validation_status": "PASS",
+ "statement": {
+  "schema_version": "2",
+  "header": {
+   "bank_name": "State Bank of India",
+   "bank_address": "J.I.FFHQB,QSDCSH- 955765,PBVBOS, ATGFWK VKVNVNY",
+   "account_holder_name": "Mr. SSGHD WGLRI",
+   "account_holder_address": "Z-675,LZSENNP JPPMT,HMNJLM,Dhosvu,236025",
+   "account_number": "21096334757",
+   "ifsc": "SBIN0809027",
+   "branch": "XDNJBX DVYY",
+   "currency": "INR",
+   "period_start": "2018-09-01",
+   "period_end": "2018-09-30",
+   "opening_balance": "1007512.22",
+   "closing_balance": "334250.45",
+   "extra": {}
+  },
+  "transactions": [
+   {
+    "row_index": 0,
+    "page": 2,
+    "txn_date": "2018-09-01",
+    "value_date": "2018-09-01",
+    "description": "WDL TFR MEA/DT/470347373708/NHHAUURV /KLOH/9873004664/Royg 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "22886.38",
+    "credit": null,
+    "balance": "984625.84",
+    "amount": "22886.38",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 1,
+    "page": 2,
+    "txn_date": "2018-09-01",
+    "value_date": "2018-09-01",
+    "description": "WDL TFR QKJ/EG/047650275874/DPAGRD BOS/GBGO/8450901168/Dp 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "7334.48",
+    "credit": null,
+    "balance": "977291.36",
+    "amount": "7334.48",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 2,
+    "page": 2,
+    "txn_date": "2018-09-02",
+    "value_date": "2018-09-02",
+    "description": "WDL TFR PPF/GK/818252331951/Vamhw Yw/HTVA/2824339405/Prxb 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "6272.75",
+    "credit": null,
+    "balance": "971018.61",
+    "amount": "6272.75",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 3,
+    "page": 3,
+    "txn_date": "2018-09-02",
+    "value_date": "2018-09-02",
+    "description": "WDL TFR KHO/QB/732945176661/REMQ QZDNA/NVEU/3413597437/Bh 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "20199.86",
+    "credit": null,
+    "balance": "950818.75",
+    "amount": "20199.86",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 4,
+    "page": 3,
+    "txn_date": "2018-09-02",
+    "value_date": "2018-09-02",
+    "description": "WDL TFR IZA/SL/071752842018/RZPRT/MXE D/6913744894/Acxwfne 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "24790.95",
+    "credit": null,
+    "balance": "926027.80",
+    "amount": "24790.95",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 5,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "WDL TFR OLA/NU/212694816421/SZMG ZLRLQ/JKVT/8826024627/Um 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "21304.82",
+    "credit": null,
+    "balance": "904722.98",
+    "amount": "21304.82",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 6,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "DEP TFR YIUN/686234420911/qhm-TT754- SSGHD G/TIJZBmday 8370601153875 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "15042.40",
+    "balance": "919765.38",
+    "amount": "15042.40",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 7,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "WDL TFR FQS/MK/736185853166/BRCAIKK A/TSLV/fokxudec69/Yaox 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "13873.41",
+    "credit": null,
+    "balance": "905891.97",
+    "amount": "13873.41",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 8,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "WDL TFR KLV/VU/869946217547/YXAAIY J/XJZP/merxiutxtf/xvsf 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15013.53",
+    "credit": null,
+    "balance": "890878.44",
+    "amount": "15013.53",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 9,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "WDL TFR QGP/UX/219105247938/MPVCDZ F/CBWJ/wxpdly.azy/awtt 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "13400.96",
+    "credit": null,
+    "balance": "877477.48",
+    "amount": "13400.96",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 10,
+    "page": 3,
+    "txn_date": "2018-09-03",
+    "value_date": "2018-09-03",
+    "description": "WDL TFR SVM/HH/913017673822/Smnoiobj/ OCEX/nczna-daep/Ocvp 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "22073.28",
+    "credit": null,
+    "balance": "855404.20",
+    "amount": "22073.28",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 11,
+    "page": 3,
+    "txn_date": "2018-09-04",
+    "value_date": "2018-09-04",
+    "description": "WDL TFR ZUF/JJ/593163620592/Zjhk Mwl/DMUY/1924941518/Wfol 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "14870.16",
+    "credit": null,
+    "balance": "840534.04",
+    "amount": "14870.16",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 12,
+    "page": 3,
+    "txn_date": "2018-09-04",
+    "value_date": "2018-09-04",
+    "description": "WDL TFR JAI/MK/334706086252/TJHTE IK/PVHS/0175138057/Vhl 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "6390.27",
+    "credit": null,
+    "balance": "834143.77",
+    "amount": "6390.27",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 13,
+    "page": 3,
+    "txn_date": "2018-09-04",
+    "value_date": "2018-09-04",
+    "description": "WDL TFR OKV/DP/334858828359/DP Offxt/VQYS/pperc-vibo/Cxy4 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "22873.93",
+    "credit": null,
+    "balance": "811269.84",
+    "amount": "22873.93",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 14,
+    "page": 3,
+    "txn_date": "2018-09-05",
+    "value_date": "2018-09-05",
+    "description": "DEBIT XGHLd EZMK50576328715673 UTY046671",
+    "reference": null,
+    "debit": "18292.99",
+    "credit": null,
+    "balance": "792976.85",
+    "amount": "18292.99",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 15,
+    "page": 3,
+    "txn_date": "2018-09-05",
+    "value_date": "2018-09-05",
+    "description": "DEBIT XGHLd RQQS79015786064534 LRRVYPWDOXDWYW",
+    "reference": null,
+    "debit": "13025.63",
+    "credit": null,
+    "balance": "779951.22",
+    "amount": "13025.63",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 16,
+    "page": 3,
+    "txn_date": "2018-09-06",
+    "value_date": "2018-09-06",
+    "description": "WDL TFR TIK/GZ/983936677334/XTEMLQ P/WOHB/ixqlkdadkz/UMX 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "18577.40",
+    "credit": null,
+    "balance": "761373.82",
+    "amount": "18577.40",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 17,
+    "page": 4,
+    "txn_date": "2018-09-06",
+    "value_date": "2018-09-06",
+    "description": "WDL TFR UQS/TT/534132241150/Zmthcfe /VWLJ/L717042356/Gfmk 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "18138.50",
+    "credit": null,
+    "balance": "743235.32",
+    "amount": "18138.50",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 18,
+    "page": 4,
+    "txn_date": "2018-09-06",
+    "value_date": "2018-09-06",
+    "description": "DEP TFR HFCR/018761698063/lau-UM553- SSGHD X/MXVYDncvp 5391385973765 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "276.63",
+    "balance": "743511.95",
+    "amount": "276.63",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 19,
+    "page": 4,
+    "txn_date": "2018-09-06",
+    "value_date": "2018-09-06",
+    "description": "WDL TFR HEQ/PM/047500709148/GIUFZH D/TCUG/vrngmx.lru/AQK 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "11339.45",
+    "credit": null,
+    "balance": "732172.50",
+    "amount": "11339.45",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 20,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "WDL TFR CGR/FT/595697671767/YBNLJD D/SFZF/8251840435/Kbna 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "9920.51",
+    "credit": null,
+    "balance": "722251.99",
+    "amount": "9920.51",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 21,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "DEBIT XGHLd 4835384 KSA OF INDIA",
+    "reference": null,
+    "debit": "2515.15",
+    "credit": null,
+    "balance": "719736.84",
+    "amount": "2515.15",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 22,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "WDL TFR LHJ/SK/781100087145/QRBGVES N/OKMF/8296708287/Etpk 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "18762.44",
+    "credit": null,
+    "balance": "700974.40",
+    "amount": "18762.44",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 23,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "DEP TFR ULU/LR/579332563315/CSQBZW D/MFHM/copdfa.knp/KXJ 5939128505660 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "11014.20",
+    "balance": "711988.60",
+    "amount": "11014.20",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 24,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "WDL TFR HFX/LL/786181656693/Kqjqx Oz/QOAY/jwowyir.32/AKDL 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "13179.54",
+    "credit": null,
+    "balance": "698809.06",
+    "amount": "13179.54",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 25,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "WDL TFR JEZ/VE/393589163306/THBQWR /ZHNU/1250589661/Uxmc 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "21108.48",
+    "credit": null,
+    "balance": "677700.58",
+    "amount": "21108.48",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 26,
+    "page": 4,
+    "txn_date": "2018-09-07",
+    "value_date": "2018-09-07",
+    "description": "WDL TFR QLC/RO/618162452245/Orupjzk/WE ZE/brhpale.cw/Yif u 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "24479.72",
+    "credit": null,
+    "balance": "653220.86",
+    "amount": "24479.72",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 27,
+    "page": 4,
+    "txn_date": "2018-09-08",
+    "value_date": "2018-09-08",
+    "description": "DEP TFR BXVT/565720216654/ygy-RV973- SSGHD Y/GCOFXjiu 6556306814952 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "5.17",
+    "balance": "653226.03",
+    "amount": "5.17",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 28,
+    "page": 4,
+    "txn_date": "2018-09-08",
+    "value_date": "2018-09-08",
+    "description": "WDL TFR PDN/HV/893682741961/LKQP Gmlv/PAMO/widj.xvkt@/xvs 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "16901.46",
+    "credit": null,
+    "balance": "636324.57",
+    "amount": "16901.46",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 29,
+    "page": 4,
+    "txn_date": "2018-09-08",
+    "value_date": "2018-09-08",
+    "description": "WDL TFR LHC/AC/481136934507/GLNBN JD/BKYW/nqgmlpynqm/Coqv 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "13192.58",
+    "credit": null,
+    "balance": "623131.99",
+    "amount": "13192.58",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 30,
+    "page": 5,
+    "txn_date": "2018-09-09",
+    "value_date": "2018-09-09",
+    "description": "WDL TFR YBL/DN/426841703610/LPVYX EO/CGNM/6580486117/Nqgp 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "11057.50",
+    "credit": null,
+    "balance": "612074.49",
+    "amount": "11057.50",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 31,
+    "page": 5,
+    "txn_date": "2018-09-09",
+    "value_date": "2018-09-09",
+    "description": "WDL TFR BRA/YQ/189892291258/Eofqaq P/LVQT/nkellhpbpp/Gqi 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "17700.19",
+    "credit": null,
+    "balance": "594374.30",
+    "amount": "17700.19",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 32,
+    "page": 5,
+    "txn_date": "2018-09-09",
+    "value_date": "2018-09-09",
+    "description": "WDL TFR TLC/XY/514844484045/20169057 /JMYH/5666894949/Pagg 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "23854.93",
+    "credit": null,
+    "balance": "570519.37",
+    "amount": "23854.93",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 33,
+    "page": 5,
+    "txn_date": "2018-09-09",
+    "value_date": "2018-09-09",
+    "description": "XGRUVV DEP XOWEr FWXU02720317703129 OWF EDTK FTS 8523-90",
+    "reference": null,
+    "debit": null,
+    "credit": "4733.41",
+    "balance": "575252.78",
+    "amount": "4733.41",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 34,
+    "page": 5,
+    "txn_date": "2018-09-09",
+    "value_date": "2018-09-09",
+    "description": "WDL TFR OFN/DH/708215630021/DSGW RGJ/SONI/8951811812/Un 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "8422.96",
+    "credit": null,
+    "balance": "566829.82",
+    "amount": "8422.96",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 35,
+    "page": 5,
+    "txn_date": "2018-09-10",
+    "value_date": "2018-09-10",
+    "description": "WDL TFR TFB/KB/674211407270/POEXTV P/WOHB/ixqlkdadkz/UMX 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "3121.60",
+    "credit": null,
+    "balance": "563708.22",
+    "amount": "3121.60",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 36,
+    "page": 5,
+    "txn_date": "2018-09-10",
+    "value_date": "2018-09-10",
+    "description": "DEP TFR SSB/FS/217791969695/UPENHK J/VLYD/zdanusly25/MRF 2882364532655 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "24160.57",
+    "balance": "587868.79",
+    "amount": "24160.57",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 37,
+    "page": 5,
+    "txn_date": "2018-09-11",
+    "value_date": "2018-09-11",
+    "description": "DEP TFR ISQ/MY/478434171414/TMFRSF C/JSOM/twssqagxne/Uyir 7813625076616 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "20110.25",
+    "balance": "607979.04",
+    "amount": "20110.25",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 38,
+    "page": 5,
+    "txn_date": "2018-09-11",
+    "value_date": "2018-09-11",
+    "description": "WDL TFR UUQ/ZQ/101500318041/PRIWC LB/WTBD/0568453509/Euxs 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "14079.04",
+    "credit": null,
+    "balance": "593900.00",
+    "amount": "14079.04",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 39,
+    "page": 5,
+    "txn_date": "2018-09-11",
+    "value_date": "2018-09-11",
+    "description": "WDL TFR JPX/JY/946848745758/Jpxapm Mze/GMEK/sqzttvq-zh/Uk 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "9045.25",
+    "credit": null,
+    "balance": "584854.75",
+    "amount": "9045.25",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 40,
+    "page": 5,
+    "txn_date": "2018-09-12",
+    "value_date": "2018-09-12",
+    "description": "WDL TFR WPN/HC/257777787520/XOLGBH G/BNPG/yvstcooqgc/Gjtw 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "4653.67",
+    "credit": null,
+    "balance": "580201.08",
+    "amount": "4653.67",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 41,
+    "page": 5,
+    "txn_date": "2018-09-12",
+    "value_date": "2018-09-12",
+    "description": "WDL TFR YZZ/PM/713555780485/RUGMAJ N/WCBK/kmqevnvtnu/Vhov 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "16015.49",
+    "credit": null,
+    "balance": "564185.59",
+    "amount": "16015.49",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 42,
+    "page": 5,
+    "txn_date": "2018-09-12",
+    "value_date": "2018-09-12",
+    "description": "WDL TFR MJT/PS/683879339423/Bqvffju/PW GI/juqxgmv.hj/WOCOr 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "4100.50",
+    "credit": null,
+    "balance": "560085.09",
+    "amount": "4100.50",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 43,
+    "page": 6,
+    "txn_date": "2018-09-13",
+    "value_date": "2018-09-13",
+    "description": "WDL TFR WCM/EP/692346362911/Seilpgqi/T UIF/zboku-4460/GmoJ 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "503.51",
+    "credit": null,
+    "balance": "559581.58",
+    "amount": "503.51",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 44,
+    "page": 6,
+    "txn_date": "2018-09-13",
+    "value_date": "2018-09-13",
+    "description": "WDL TFR ODG/QB/278228277521/YXSWPL G/BNPG/yvstcooqgc/Gjtw 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "2016.52",
+    "credit": null,
+    "balance": "557565.06",
+    "amount": "2016.52",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 45,
+    "page": 6,
+    "txn_date": "2018-09-13",
+    "value_date": "2018-09-13",
+    "description": "WDL TFR DFC/BI/890517232278/AKATIX . /XXDA/pzjdjcriix/KIP 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15517.69",
+    "credit": null,
+    "balance": "542047.37",
+    "amount": "15517.69",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 46,
+    "page": 6,
+    "txn_date": "2018-09-13",
+    "value_date": "2018-09-13",
+    "description": "WDL TFR ETN/QG/271617331295/LAPEJZ M/KQFU/2391062297/Sgqq 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "11616.89",
+    "credit": null,
+    "balance": "530430.48",
+    "amount": "11616.89",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 47,
+    "page": 6,
+    "txn_date": "2018-09-13",
+    "value_date": "2018-09-13",
+    "description": "WDL TFR UOU/XA/164406188025/CDSTAH J/VLYD/zdanusly25/MRF 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "16438.57",
+    "credit": null,
+    "balance": "513991.91",
+    "amount": "16438.57",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 48,
+    "page": 6,
+    "txn_date": "2018-09-14",
+    "value_date": "2018-09-14",
+    "description": "WDL TFR ILK/RK/606212869108/Xwxzwf /SDOL/5546926497/Kcvm 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "5059.58",
+    "credit": null,
+    "balance": "508932.33",
+    "amount": "5059.58",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 49,
+    "page": 6,
+    "txn_date": "2018-09-14",
+    "value_date": "2018-09-14",
+    "description": "WDL TFR IAD/TG/460568085249/N T Bkyl/XBNT/bqsid32.wp/BSUY 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "18225.33",
+    "credit": null,
+    "balance": "490707.00",
+    "amount": "18225.33",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 50,
+    "page": 6,
+    "txn_date": "2018-09-15",
+    "value_date": "2018-09-15",
+    "description": "WDL TFR KPB/KS/161399738174/Emtidi Q/YGLN/afsleb3dlc/Kfgt 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15987.24",
+    "credit": null,
+    "balance": "474719.76",
+    "amount": "15987.24",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 51,
+    "page": 6,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "WDL TFR GGM/PR/892941367727/Lj Coga /TZAK/dhvu.0508@/Hfma 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "3771.61",
+    "credit": null,
+    "balance": "470948.15",
+    "amount": "3771.61",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 52,
+    "page": 6,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "DEP TFR HLLJ/112656967916/llo-SO684- SSGHD O/SDDTP 0306266450280 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "731.18",
+    "balance": "471679.33",
+    "amount": "731.18",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 53,
+    "page": 6,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "WDL TFR BRQ/RW/668099951464/Figies W/AGKC/rzh281266@/Pomw 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "5553.74",
+    "credit": null,
+    "balance": "466125.59",
+    "amount": "5553.74",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 54,
+    "page": 6,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "WDL TFR BXN/PR/556607173567/HSFN Gmlv/PAMO/widj.xvkt@/xvs 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "5997.39",
+    "credit": null,
+    "balance": "460128.20",
+    "amount": "5997.39",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 55,
+    "page": 6,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "WDL TFR TNC/IJ/711611266494/LT TIVWK/JJQF/dqltmgnklr/Hegi 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "11427.99",
+    "credit": null,
+    "balance": "448700.21",
+    "amount": "11427.99",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 56,
+    "page": 7,
+    "txn_date": "2018-09-16",
+    "value_date": "2018-09-16",
+    "description": "WDL TFR TNY/ZP/977370670677/Uexuydze /EBTC/9874158787/Vizl 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15204.01",
+    "credit": null,
+    "balance": "433496.20",
+    "amount": "15204.01",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 57,
+    "page": 7,
+    "txn_date": "2018-09-17",
+    "value_date": "2018-09-17",
+    "description": "DEP TFR SGK/QM/613746069488/KCJHIJ J/VLYD/zdanusly25/MRF 2882364532655 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "8962.25",
+    "balance": "442458.45",
+    "amount": "8962.25",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 58,
+    "page": 7,
+    "txn_date": "2018-09-17",
+    "value_date": "2018-09-17",
+    "description": "WDL TFR GYI/BO/003889468464/Arrqw Mg/AWLZ/0910988181/Grlz 8980437624745 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "2391.91",
+    "credit": null,
+    "balance": "440066.54",
+    "amount": "2391.91",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 59,
+    "page": 7,
+    "txn_date": "2018-09-18",
+    "value_date": "2018-09-18",
+    "description": "WDL TFR JRG/UL/379196267165/HIWMG LB/WTBD/0568453509/Euxs 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15717.13",
+    "credit": null,
+    "balance": "424349.41",
+    "amount": "15717.13",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 60,
+    "page": 7,
+    "txn_date": "2018-09-19",
+    "value_date": "2018-09-19",
+    "description": "WDL TFR XBS/HF/948879062087/PZXOF/YKJ A/yrrqh@awlz/WYC 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "5616.19",
+    "credit": null,
+    "balance": "418733.22",
+    "amount": "5616.19",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 61,
+    "page": 7,
+    "txn_date": "2018-09-19",
+    "value_date": "2018-09-19",
+    "description": "WDL TFR IYU/DO/320230505475/SAIQOA B/OGKR/zouh-76952/Kszi 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "2405.32",
+    "credit": null,
+    "balance": "416327.90",
+    "amount": "2405.32",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 62,
+    "page": 7,
+    "txn_date": "2018-09-19",
+    "value_date": "2018-09-19",
+    "description": "WDL TFR GJT/VW/594879933775/Jhfqveh/NM ZE/brhpale.cw/Yif u 2956853343244 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "8552.88",
+    "credit": null,
+    "balance": "407775.02",
+    "amount": "8552.88",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 63,
+    "page": 7,
+    "txn_date": "2018-09-20",
+    "value_date": "2018-09-20",
+    "description": "DEP TFR YXO/NC/354325265566/AVIFUW P/WOHB/ixqlkdadkz/UMX 6191520808834 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "417.38",
+    "balance": "408192.40",
+    "amount": "417.38",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 64,
+    "page": 7,
+    "txn_date": "2018-09-20",
+    "value_date": "2018-09-20",
+    "description": "WDL TFR AOQ/LJ/234595664847/LAHZGC D/VGMP/waibiqre62/Leqf 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "371.23",
+    "credit": null,
+    "balance": "407821.17",
+    "amount": "371.23",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 65,
+    "page": 7,
+    "txn_date": "2018-09-20",
+    "value_date": "2018-09-20",
+    "description": "DEP TFR GTC/HR/483991935046/NCHAEAJQ/ HTUP/amndttiv70/RAF 6191520808834 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "7001.47",
+    "balance": "414822.64",
+    "amount": "7001.47",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 66,
+    "page": 7,
+    "txn_date": "2018-09-20",
+    "value_date": "2018-09-20",
+    "description": "WDL TFR ZDY/VD/337097988383/LHIOWDR /HSLT/8746595937/Irsh 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "12435.63",
+    "credit": null,
+    "balance": "402387.01",
+    "amount": "12435.63",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 67,
+    "page": 7,
+    "txn_date": "2018-09-21",
+    "value_date": "2018-09-21",
+    "description": "WDL TFR VQW/CD/894893945023/Kpfsr Mt/HBQF/asurr-tckf/Uyv6 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "21769.60",
+    "credit": null,
+    "balance": "380617.41",
+    "amount": "21769.60",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 68,
+    "page": 7,
+    "txn_date": "2018-09-21",
+    "value_date": "2018-09-21",
+    "description": "WDL TFR DQE/AD/557073847349/PKHBRTM /BBYC/3005738386/Lree 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "23301.86",
+    "credit": null,
+    "balance": "357315.55",
+    "amount": "23301.86",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 69,
+    "page": 8,
+    "txn_date": "2018-09-22",
+    "value_date": "2018-09-22",
+    "description": "WDL TFR AYU/VD/330139170274/UHREJX D/VGMP/waibiqre62/Leqf 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "207.81",
+    "credit": null,
+    "balance": "357107.74",
+    "amount": "207.81",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 70,
+    "page": 8,
+    "txn_date": "2018-09-22",
+    "value_date": "2018-09-22",
+    "description": "WDL TFR EXP/DO/753256929819/Mmduk B/LTBH/payvkqxdby/Ovor 1004063434147 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "80.26",
+    "credit": null,
+    "balance": "357027.48",
+    "amount": "80.26",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 71,
+    "page": 8,
+    "txn_date": "2018-09-23",
+    "value_date": "2018-09-23",
+    "description": "WDL TFR LUI/DH/675701903089/RGVTGVYL/ CPQM/hyoqzlyrae/Iptl 0540561596842 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "11276.62",
+    "credit": null,
+    "balance": "345750.86",
+    "amount": "11276.62",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 72,
+    "page": 8,
+    "txn_date": "2018-09-24",
+    "value_date": "2018-09-24",
+    "description": "DEP TFR XHN/IK/146531540012/ORHJZQ FH/AKAN/qhyiyopok-/PGG 2882364532655 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "8994.36",
+    "balance": "354745.22",
+    "amount": "8994.36",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 73,
+    "page": 8,
+    "txn_date": "2018-09-25",
+    "value_date": "2018-09-25",
+    "description": "WDL TFR POT/NB/574052383893/PHNWM LB/WTBD/0568453509/Euxs 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "3681.23",
+    "credit": null,
+    "balance": "351063.99",
+    "amount": "3681.23",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 74,
+    "page": 8,
+    "txn_date": "2018-09-25",
+    "value_date": "2018-09-25",
+    "description": "WDL TFR VJM/GN/328699411279/GINZCQ /SYUV/ktdfymimwt/Obmo 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "15498.56",
+    "credit": null,
+    "balance": "335565.43",
+    "amount": "15498.56",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 75,
+    "page": 8,
+    "txn_date": "2018-09-25",
+    "value_date": "2018-09-25",
+    "description": "WDL TFR QQZ/QK/359539062512/IP DLKNGIY/ZGYR/xiizfpi5sa/Mw 8013355484027 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "22631.90",
+    "credit": null,
+    "balance": "312933.53",
+    "amount": "22631.90",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 76,
+    "page": 8,
+    "txn_date": "2018-09-25",
+    "value_date": "2018-09-25",
+    "description": "INTEREST CREDIT",
+    "reference": null,
+    "debit": null,
+    "credit": "23242.33",
+    "balance": "336175.86",
+    "amount": "23242.33",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 77,
+    "page": 8,
+    "txn_date": "2018-09-27",
+    "value_date": "2018-09-27",
+    "description": "WDL TFR GSQ/GA/075254868294/AR DYRAX/YGQN/lbjpmjj672/Pjgo 6079349550015 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "20582.85",
+    "credit": null,
+    "balance": "315593.01",
+    "amount": "20582.85",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 78,
+    "page": 8,
+    "txn_date": "2018-09-28",
+    "value_date": "2018-09-28",
+    "description": "WDL TFR WXP/MJ/573896797238/Pemwt Nh/OCZU/8050945335/Imnq 7185601371800 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": "4107.12",
+    "credit": null,
+    "balance": "311485.89",
+    "amount": "4107.12",
+    "direction": "DEBIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 79,
+    "page": 8,
+    "txn_date": "2018-09-28",
+    "value_date": "2018-09-28",
+    "description": "DEP TFR SOZ/YX/494819886565/QOGEQQ P/WOHB/ixqlkdadkz/UMX 5939128505660 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "13251.44",
+    "balance": "324737.33",
+    "amount": "13251.44",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   },
+   {
+    "row_index": 80,
+    "page": 8,
+    "txn_date": "2018-09-28",
+    "value_date": "2018-09-28",
+    "description": "DEP TFR NNK/PU/756735207914/KXCVWH . /XXDA/pzjdjcriix/KIP 5939128505660 AT 71281 XDNJBX DVYY BRANCH",
+    "reference": null,
+    "debit": null,
+    "credit": "9513.12",
+    "balance": "334250.45",
+    "amount": "9513.12",
+    "direction": "CREDIT",
+    "extra": {
+     "column_3": "-"
+    }
+   }
+  ],
+  "summary": {
+   "total_debits": "820717.93",
+   "total_credits": "147456.16",
+   "debit_count": 66,
+   "credit_count": 15
+  }
+ }
+}

@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 9 (approved 2026-10-14 to run alongside the rest of Stage 7) — golden store, approval, `regress` and both gates are built, and the owner approved statements 1–3 as golden (2026-10-14; `regress`: 3 × PASS). Remaining: anonymised layout copies for CI (C6). Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 9 is done (2026-10-14): statements 1–3 are golden, `regress` and both gates run, and anonymised copies of all 3 layouts protect them in CI. Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -14,7 +14,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 6 | Repository restructure | Done | 2026-10-04 | 2026-10-04 |
 | 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
-| 9 | Golden set & non-regression gate | In progress (alongside 7, approved) | 2026-10-14 | — |
+| 9 | Golden set & non-regression gate | Done | 2026-10-14 | 2026-10-14 |
 | 10 | Local AI agent (open-source model), trained with human review | Not started | — | — |
 | 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
 | 12 | Password vault & intake | Not started | — | — |
@@ -126,11 +126,11 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Open owner items before or during this stage:**
   - [ ] Review `docs/PROJECT_GUIDE.md` (closes Stage 5).
   - [x] ~~PyMuPDF licence (D-007)~~ — no longer needed: pypdfium2 is the free fast default (D-015).
-  - [ ] Commit the real-layout template from `data/templates/`? It holds labels and geometry only.
+  - [x] Commit the real-layout templates (labels and geometry only, provenance ids removed): approved 2026-10-14 with the anonymised layout copies; they live in `backend/tests/fixtures/layouts/<name>/template.json`. Promoting them into `template_registry/` stays a separate step.
   - [ ] Sample-data PII (D-004): keep, replace, or rewrite history.
   - [ ] Delete the unused local `.venv/` and `venv/` at the repository root, and merged branches.
   - [x] Claude may view real statement content for training/debugging (owner, 2026-10-14). Recorded as rule 5 in `~/.claude/CLAUDE.md`: this project only, view only what a task needs, never commit, log or send it anywhere.
-  - [ ] Approve running Stage 9 alongside the rest of Stage 7 (global rule 2: one stage at a time unless approved).
+  - [x] Approve running Stage 9 alongside the rest of Stage 7 (approved 2026-10-14).
 
 ## 8. Speed — Done (2026-10-14; remaining robustness items moved)
 
@@ -142,7 +142,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - Layouts with neither ruled cells nor heading text → Stage 10 (agent; Docling as a candidate).
   - Single parsing pass; cross-backend check on every new statement → Stage 9 (part of the regression run).
 
-## 9. Golden set & non-regression gate — In progress
+## 9. Golden set & non-regression gate — Done (2026-10-14)
 
 - **Goal:** Nothing that worked before can break: every engine or template change is checked against every approved statement.
 - **Deliverables:**
@@ -150,12 +150,12 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] "Approve as golden" in `/review`: only the latest extraction, with a saved review that has 0 wrong and 0 missing, no failed validation (warnings must be confirmed), a PDF that can be reopened (unencrypted, or a line of `sample_data/.pdf_password`), and output the current code reproduces. Re-approval adds a version. Golden badge and field-by-field differences on screen.
   - [x] `regress` command (`backend/scripts/regress.py`): re-extracts every golden statement exactly as the app does (shared `extraction/select.py`) and compares field by field, plus the extraction path (a template that stops working is caught even when the fallback output matches). Masked values by default; `--show-values`; `--backends both`. Report in `data/regress/`.
   - [x] Gates: the template agent cannot save a template that changes any golden output (`golden_gate`); `.githooks/pre-push` runs `regress` before every push (skips where no golden set exists). Synthetic samples stay covered by CI tests.
-  - [ ] Anonymised copies of each golden layout (same geometry, fake values) for CI: word-layout JSON fixtures, owner checks them before commit (plan in D-022).
+  - [x] Anonymised copies of each golden layout for CI (`backend/tests/fixtures/layouts/`, made by `backend/scripts/anonymise_layout.py`): every word at its exact position, label vocabulary kept, every other word replaced by a same-shape fake, amounts regenerated so balances and totals still verify, years shifted by −8. Refused automatically if any real word survives or the output structure or validation status changes. CI re-extracts each copy (`tests/test_layout_fixtures.py`); disabling the lead-line rule makes the SBI and ICICI copies fail. Owner checked the previews and approved the commit (2026-10-14).
 - **Exit criteria:**
   - Changing one field of the engine output makes `regress` fail on the right statement and field.
   - The agent cannot save a template that changes any golden output.
   - The 3 real statements are golden.
-- **Evidence so far:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor.
+- **Evidence:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor. C6: 3 anonymised layout copies, `tests/test_layout_fixtures.py` passes (208 tests in all).
 
 ## 10. Local AI agent (open-source model), trained with human review — Not started
 

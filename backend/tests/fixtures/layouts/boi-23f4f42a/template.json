@@ -1,0 +1,165 @@
+{
+  "format": 1,
+  "template_id": "boi/layout-23f4f42a/v3",
+  "bank_code": "boi",
+  "bank_name": "Bank of India",
+  "layout_id": "layout-23f4f42a",
+  "version": 3,
+  "status": "approved",
+  "strategy": "word_columns",
+  "markers": [
+    "Customer ID",
+    "Account number",
+    "Branch Name",
+    "Transaction Date from",
+    "Amount from",
+    "Cheque from"
+  ],
+  "table": {
+    "columns": [
+      {
+        "role": "ignore",
+        "x0": 115.5,
+        "x1": 218.24,
+        "label": "sr_no"
+      },
+      {
+        "role": "txn_date",
+        "x0": 218.24,
+        "x1": 354.73
+      },
+      {
+        "role": "description",
+        "x0": 354.73,
+        "x1": 809.68
+      },
+      {
+        "role": "debit",
+        "x0": 809.68,
+        "x1": 1003.04
+      },
+      {
+        "role": "credit",
+        "x0": 1003.04,
+        "x1": 1196.4
+      },
+      {
+        "role": "balance",
+        "x0": 1196.4,
+        "x1": 1424.26
+      }
+    ],
+    "date_formats": [
+      "%d-%m-%Y"
+    ],
+    "header_tokens": [
+      "Sr",
+      "No",
+      "Date",
+      "Remarks",
+      "Debit",
+      "Credit",
+      "Balance"
+    ],
+    "min_header_tokens": 2,
+    "header_on_every_page": false,
+    "empty_tokens": [
+      "",
+      "-"
+    ],
+    "line_tolerance": 3.0,
+    "amount_mode": "columns"
+  },
+  "header_rules": [
+    {
+      "kind": "regex",
+      "targets": [
+        "header.account_number"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Account|A/c|Acct)\\.?\\s*(?:Number|No)\\.?\\s*:?\\s*([0-9X*]{6,20})\\b",
+      "flags": "i"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.ifsc"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?i:\\bIFS(?:C)?(?:\\s*Code)?)\\s*:?\\s*([A-Z]{4}0[A-Z0-9]{6})\\b"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.period_start",
+        "header.period_end"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Statement\\s+)?(?:from|period)\\s*:?\\s*(\\d{1,2}[-/ .](?:\\d{1,2}|[A-Za-z]{3,9})[-/ .]\\d{2,4})\\s*(?:to|-)\\s*:?\\s*(\\d{1,2}[-/ .](?:\\d{1,2}|[A-Za-z]{3,9})[-/ .]\\d{2,4})",
+      "flags": "i"
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.branch"
+      ],
+      "pages": [
+        1,
+        2
+      ],
+      "pattern": "(?:Branch[ \\t]+Name|Home[ \\t]+Branch|Account[ \\t]+Branch|Branch)[ \\t]*:[ \\t]*([A-Z][A-Za-z0-9 .&-]*?)[ \\t]*(?=[ \\t][A-Z][A-Za-z.]*(?:[ \\t][A-Za-z.]+)*[ \\t]*:|$)",
+      "flags": "m"
+    },
+    {
+      "kind": "block",
+      "targets": [
+        "header.account_holder_name"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "\\bAccount\\s+holder\\s+name\\s*:",
+      "flags": "i",
+      "join": " "
+    },
+    {
+      "kind": "block",
+      "targets": [
+        "header.account_holder_address"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "\\b(?:Account\\s+holder|Customer|Communication|Mailing|Registered)\\s+address\\s*:",
+      "flags": "i",
+      "join": " "
+    },
+    {
+      "kind": "regex",
+      "targets": [
+        "header.currency"
+      ],
+      "pages": [
+        1
+      ],
+      "pattern": "(₹)"
+    }
+  ],
+  "required_checks": [
+    "balance_chain"
+  ],
+  "provenance": {
+    "created_by": "anonymised fixture",
+    "copied_from": "boi/layout-23f4f42a/v3"
+  },
+  "regression": {}
+}

@@ -96,8 +96,10 @@ def create_app(settings=None, learning_mode="process"):
         if ex and ex.get("self_review") is None and ex.get("statement") is not None:
             p = proc()
             template = p.registry.get(ex["template_id"]) if ex.get("template_id") else None
-            ex["self_review"] = build_self_review(ex["statement"], ex["report"], None, template,
-                                                  p.db.latest_template_job(ex["document_id"]))
+            job = p.db.latest_template_job(ex["document_id"])
+            if job and job.get("template_id") != ex.get("template_id"):
+                job = None              # this document's job did not make this template
+            ex["self_review"] = build_self_review(ex["statement"], ex["report"], None, template, job)
         return ex
 
     @app.get("/api/documents/{document_id}")

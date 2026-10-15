@@ -266,3 +266,29 @@ def _settle(client, doc_id):
 def _job_count(db, doc_id):
     with db.connect() as c:
         return c.execute("SELECT COUNT(*) FROM template_jobs WHERE document_id = ?", (doc_id,)).fetchone()[0]
+
+
+# --- code review of Stage 10: no statement may stay PROCESSING or LEARNING forever ----------------
+
+def test_crash_in_workflow_1_ends_as_failed_not_processing(tmp_path, monkeypatch):
+    def boom(*args, **kwargs):
+        raise RuntimeError("SECRET-ROW-TEXT")          # stands for statement content in an error
+    monkeypatch.setattr(pipeline, "extract_unknown", boom)
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)
+    assert p.process(doc_id) == DocStatus.FAILED
+    doc = p.db.get_document(doc_id)
+    assert doc["status"] == DocStatus.FAILED and "RuntimeError" in doc["error"] and "SECRET-ROW-TEXT" not in doc["error"]
+    p.shutdown()
+
+
+def test_accepted_template_that_cannot_be_loaded_ends_learning(tmp_path, monkeypatch):
+    monkeypatch.setattr(pipeline, "extract_unknown", _no_table)
+    monkeypatch.setattr(pipeline, "run_learning_job", lambda *args: ("ACCEPTED", "nope/layout-x/v1"))
+    p = _processor(tmp_path, tmp_path / "no-templates")
+    doc_id = _ingest(p, SBI_PDF)
+    assert p.process(doc_id) == DocStatus.LEARNING
+    assert p.wait_idle(30)
+    doc = p.db.get_document(doc_id)
+    assert doc["status"] == DocStatus.NEEDS_REVIEW and "could not be loaded" in doc["error"]
+    p.shutdown()

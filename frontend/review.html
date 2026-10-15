@@ -408,11 +408,16 @@ function selfReviewBox(sr, cal) {
         btns[val] = b; v.append(b);
       }
       const note = el("input", null, "note"); note.type = "text"; note.maxLength = 500; note.placeholder = "optional note";
-      note.oninput = () => {
-        const cur = fb() || { verdict: "agree", note: "" };
-        current.feedback[u.id] = { verdict: cur.verdict, note: note.value }; paint(); scheduleSave();
+      note.oninput = () => {            // a note belongs to a verdict: it is enabled once one is chosen
+        const cur = fb(); if (!cur) return;
+        current.feedback[u.id] = { verdict: cur.verdict, note: note.value }; scheduleSave();
       };
-      const paint = () => { const cur = fb(); for (const k in btns) btns[k].classList.toggle("on", !!cur && cur.verdict === k); if (document.activeElement !== note) note.value = cur ? cur.note : ""; };
+      const paint = () => {
+        const cur = fb();
+        for (const k in btns) btns[k].classList.toggle("on", !!cur && cur.verdict === k);
+        note.disabled = !cur; note.placeholder = cur ? "optional note" : "choose Agree or Disagree first";
+        if (document.activeElement !== note) note.value = cur ? cur.note : "";
+      };
       paint();
       li.append(v, el("br"), note);
       ul.append(li);

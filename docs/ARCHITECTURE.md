@@ -68,7 +68,8 @@ The agent's loop structure is in place; its current proposer is deterministic, b
 | `extraction/inference.py`, `unknown.py` | Unknown-layout inference and Workflow 1 |
 | `extraction/generic_rules.py` | Layout-independent header rules; bank identity from the account's IFSC |
 | `core/validation.py` | Balance chain, reconciliation, rows, header → `PASS / WARN / FAIL / SKIP` report |
-| `learning/` | Template agent, proposers, privacy-safe markers |
+| `learning/` | Template agent, proposers, privacy-safe markers; `llm_view.py` finds tables without ruled cells and checks column labels against their content (D-023) |
+| `llm/ollama.py` | Client for the local model server; refuses any host but this computer (D-023) |
 | `storage/` | Content-addressed file store, SQLite |
 | `pipeline.py` | Orchestration; separate extraction and learning pools |
 | `api/` | FastAPI routes; the UI pages live in top-level `frontend/` (`index.html` upload, `review.html` verification) |

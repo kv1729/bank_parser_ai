@@ -24,6 +24,8 @@ from bank_parser.extraction.select import extract_known
 from bank_parser.golden import golden_gate
 from bank_parser.extraction.unknown import STRATEGY as UNKNOWN_STRATEGY, extract_unknown
 from bank_parser.learning import LearningBudget, RegressionDoc, TemplateAgent
+from bank_parser.learning.proposers import HeuristicProposer, LLMProposer
+from bank_parser.llm.ollama import OllamaClient
 from bank_parser.pdf import MalformedPdf, PasswordRequired, PdfKind, classify, open_pdf
 from bank_parser.core.schema import statement_to_dict
 from bank_parser.storage import Database, DocumentStore
@@ -73,9 +75,14 @@ def run_learning_job(settings, job_id, document_id, path, password):
         registry = build_registry(settings)
         budget = LearningBudget(max_candidates=settings.learning_max_candidates,
                                 max_refinements=settings.learning_max_refinements,
-                                max_seconds=settings.learning_max_seconds)
+                                max_seconds=settings.learning_max_seconds,
+                                max_llm_tokens=settings.llm_max_tokens)
+        # The heuristic proposer goes first; the local model is asked only when it fails (D-023).
+        proposers = [HeuristicProposer()]
+        if settings.llm_max_tokens > 0:
+            proposers.append(LLMProposer(OllamaClient(settings.llm_url), settings.llm_model))
         agent = TemplateAgent(registry, regression_corpus(settings, db), budget, backend=settings.pdf_backend,
-                              golden_check=golden_gate(db, settings))
+                              proposers=proposers, golden_check=golden_gate(db, settings))
         outcome = agent.learn(path, password, document_id)
         db.update_template_job(job_id, status=outcome.status.value, template_id=outcome.template_id,
                                reason=outcome.reason, attempts=outcome.attempts, duration_ms=outcome.duration_ms)

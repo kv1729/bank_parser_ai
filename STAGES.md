@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 9 is done (2026-10-14): statements 1–3 are golden, `regress` and both gates run, and anonymised copies of all 3 layouts protect them in CI. Stage 7 continues with more statements. **Next:** Stage 10 (local AI agent). How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`) and 10.2 (AI template proposer) are done (D-023). **Next:** 10.3, AI fallback extraction. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
 | 9 | Golden set & non-regression gate | Done | 2026-10-14 | 2026-10-14 |
-| 10 | Local AI agent (open-source model), trained with human review | Not started | — | — |
+| 10 | Local AI agent (open-source model), trained with human review | In progress | 2026-10-14 | — |
 | 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
 | 12 | Password vault & intake | Not started | — | — |
 | 13 | OCR for scanned PDFs | Not started | — | — |
@@ -157,18 +157,32 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - The 3 real statements are golden.
 - **Evidence:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor. C6: 3 anonymised layout copies, `tests/test_layout_fixtures.py` passes (208 tests in all).
 
-## 10. Local AI agent (open-source model), trained with human review — Not started
+## 10. Local AI agent (open-source model), trained with human review — In progress
 
 - **Goal:** Unknown layouts are extracted without a human: a local model reads the statement, proposes a template and, when no recipe fits, the extraction itself; everything passes the self-check and the regression gate.
 - **Deliverables:**
-  - [ ] Model choice: ≤ 3 free open-source candidates, ≤ 2 tested on this laptop (CPU) for accuracy, time and memory (D-019).
-  - [ ] AI template proposer (full statement content allowed: the model runs locally and nothing leaves the machine).
+  - [x] **10.1 Model choice** (D-023): qwen3.5:4b and qwen3.5:9b tested (phi4-mini in reserve, not needed); **qwen3.5:9b** chosen. On 10 cases it was 10/10 identical and repeatable, 12 s per answer, 6.1 GB, on this laptop's CPU. The 4b got 3/10.
+  - [x] **10.2 AI template proposer** (D-023):
+    - code finds the table and columns from word geometry, including tables without ruled lines or heading text;
+    - familiar heading words label them without a model;
+    - otherwise the local model labels each column from its heading and sample values;
+    - labels are checked against the content, debit/credit are swapped once if the balance chain fails, then the agent's usual gates run.
+    - Hold-out: the agent with only the AI proposer learned all 3 golden statements from scratch, identical to golden.
   - [ ] AI fallback extraction: status `LEARNING`, then the self-checked result appears; known layouts stay on the fast path.
   - [ ] Text checks beyond arithmetic (CHECKPOINT B5).
   - [ ] Agent self-review per statement (what it checked, what it is unsure of, confidence per field), shown in the review screen; the owner gives feedback on the agent's review as well as the output (D-020).
   - [ ] Locale-aware formats and validators for US statements (CHECKPOINT H6).
   - [ ] Human flags and approvals stored as training examples for the agent.
   - [ ] Evaluation on held-out statements: success rate, time, re-tries.
+- **Sub-steps:**
+  - 10.1 model choice ✅
+  - 10.2 AI template proposer ✅
+  - 10.3 AI fallback extraction
+  - 10.4 agent self-review
+  - 10.5 text checks (started: content checks on column labels)
+  - 10.6 US formats
+  - 10.7 feedback as training examples
+  - 10.8 held-out evaluation
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
 - **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).
 

@@ -25,3 +25,9 @@ def sbi_raw():
 @pytest.fixture
 def sbi_statement(sbi_raw):
     return statement_from_dict(sbi_raw)
+
+
+@pytest.fixture(autouse=True)
+def no_local_model(monkeypatch):
+    """Tests never call the real local model (slow, and absent in CI); they use a fake client."""
+    monkeypatch.setenv("BANK_PARSER_LLM_MAX_TOKENS", "0")

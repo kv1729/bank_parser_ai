@@ -467,3 +467,57 @@ The review screen will show that review beside the output. The owner gives feedb
   - **Owner approval (2026-10-14):** checked the previews and approved committing both the copies and their templates.
 - **Design as planned before building C6:**
   - **Anonymised layout copies for CI (C6):** word-layout JSON fixtures (positions kept; every non-label token replaced with a fake of the same shape; amounts regenerated so the balance chain holds), served by a test double. The owner checks them before commit; at most 2 experiments per layout (PLAN §6).
+
+## D-023 — Local model for the template agent: qwen3.5:9b, labelling only (Stage 10.1–10.2)
+
+- **Date:** 2026-10-15
+- **Owner:** approved starting Stage 10 with a **local** model (not a hosted API: privacy, free, repeatable, offline) and the plan for 10.1–10.2.
+- **Problem:** the template agent learned only layouts with a ruled table. Tables without ruled lines, with unfamiliar headings, or with no heading text at all (current SBI prints only "Balance") ended in human review.
+- **Candidates (PLAN §6: ≤ 3, ≤ 2 tested):**
+  - Shortlisted: qwen3.5:4b and qwen3.5:9b (both Apache-2.0), phi4-mini (MIT) in reserve. Licences were read from each model's Ollama licence file.
+  - Excluded: gemma3 and llama3.2 (licences not open source); gpt-oss:20b (13.8 GB, too large for 16 GB RAM).
+- **Experiment 1 — the model reads the whole page** (numbered lines with x positions) and returns heading lines, last row and column positions:
+  - 4b: 0 of 5 cases usable, 85–180 s per answer.
+  - Lesson: locating things by line number and position is geometry, which small models do badly and code does well.
+- **Experiment 2 — code finds the table, the model only labels it.**
+  - **Code** (`learning/llm_view.py`):
+    - transaction lines: a date among the first three words, plus a money amount;
+    - the 1–3 heading lines above them (description lines touching the first date line are skipped, D-018);
+    - columns: heading words grouped by gaps, or the rows' own gaps when there is too little heading text;
+    - boundaries: between neighbouring headings, where the fewest table words cross;
+    - the date format.
+  - **The model** sees each column's heading and three real sample values, with placeholders skipped and taken from up to 4 pages. It answers with one role per column, and nothing else.
+  - **Amount mode** follows from the roles in code. Asking the model for it caused one of its errors.
+  - **Ollama call:** JSON schema with exactly one role per column, `temperature 0`, fixed seed, answer capped at 200 tokens, context 2048 tokens.
+    - The cap is needed: without it, the 4b once generated 2,283 tokens of repeated list items.
+    - The small context keeps memory down.
+- **Evidence (`experiments/llm_choice.py`, 10 cases, each answered twice):**
+  - **Cases:** the 3 golden statements; the BOI and ICICI anonymised copies; the same two with their headings reworded (e.g. "Withdrawals", "Closing Bal", "Narration Details"); the SBI copy (no heading text); the 2 synthetic PDFs.
+
+  | Model | Base cases identical | Hard cases identical | Repeatable | Typical answer | Memory |
+  |---|---|---|---|---|---|
+  | qwen3.5:4b | 3 / 7 | 0 / 3 | yes | 15 s | 3.3 GB |
+  | **qwen3.5:9b** | **7 / 7** | **3 / 3** | yes | 12 s (first 46 s, loading) | 6.1 GB |
+
+  - "Identical" means every transaction's dates, description, reference, debit, credit and balance equal the approved output. The serial-number field differs on the last row of BOI and ICICI: a footer word sits 1.5 pt from the column edge, which the ruled template places differently. Money and text fields are unaffected.
+  - With familiar heading words alone, no model is needed: 6 of 10 identical. This path is now part of the heuristic proposer.
+  - **Hold-out, end to end** (`experiments/llm_holdout.py`): the agent with **only** the local-model proposer and an empty template registry learned each of the 3 golden statements on the first attempt, with all checks applied. Each took 11–13 s and 444–521 tokens, and every transaction was identical to the golden output. `regress` stays 3 × PASS.
+- **Decision:**
+  - **Model:** `qwen3.5:9b` is the default (`BANK_PARSER_LLM_MODEL`), with a token budget of 4,000 per learning job (`BANK_PARSER_LLM_MAX_TOKENS`; 0 = off).
+  - **When the model runs:** only when Ollama runs locally and the model is installed, and only after the heuristic proposer fails.
+  - **Proposer order:**
+    1. ruled table;
+    2. unruled table labelled by familiar heading words;
+    3. local model.
+  - **Checks:** a model's labels must pass `_check_content`/`_check_description`, then the agent's arithmetic, marker and golden gates.
+  - **Swap:** when the balance chain fails and both debit and credit are labelled, they are swapped once (the balance decides) before the model is asked again. Without headings, the samples cannot tell money in from money out.
+- **Safety findings:**
+  - **Wrong labels can pass the arithmetic:** a 4b labelling with the description column called "reference" passed validation (PASS) with wrong text. New content checks reject it:
+    - date columns must hold dates;
+    - money columns must hold amounts;
+    - a description column is required and must hold the longest text over whole rows;
+    - the balance column must not be empty.
+
+    This is a first part of CHECKPOINT B5.
+  - **Memory:** on this 16 GB laptop the 9b leaves little free memory (one benchmark run was stopped by low memory). It runs only for layouts the rules cannot learn, so rarely. If memory becomes a problem, turn it off or close other apps.
+- **Rule change (owner-approved with the plan):** only a local model (Ollama on 127.0.0.1; `llm/ollama.py` refuses any other host) may see statement content, never a hosted LLM. Statement text goes to it as fenced data; its answer is schema-checked, never executed. `CLAUDE.md` is updated accordingly.

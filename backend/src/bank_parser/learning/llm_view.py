@@ -35,7 +35,7 @@ SAMPLES = 3
 MAX_SAMPLE_CHARS = 24
 SAMPLE_PAGES = 4         # pages read for sample values
 PLACEHOLDERS = ("-", "--", "0.00", "NA", "N/A")
-_MONEY = re.compile(r"^\(?-?[\d,]*\d\.\d{2}\)?(?:\s*(?:CR|DR|Cr|Dr))?$")
+_MONEY = re.compile(r"^\(?-?[\d,]*\d\.\d{2}\)?-?(?:\s*(?:CR|DR|Cr|Dr))?$")   # "45.10-": trailing minus (US), D-026
 
 SYSTEM = (
     "You label the columns of a bank statement's transaction table. Each column is given with its "
@@ -227,10 +227,14 @@ def find_first_table(doc, pages=(1, 2)):
 def word_roles(view):
     """Roles from familiar heading words (no model), or None when they do not describe a table."""
     roles = [r or "ignore" for r in _label_roles(view.headings)]
-    mode = "columns" if {"debit", "credit"} <= set(roles) else None
-    if mode is None or not {"txn_date", "balance"} <= set(roles):
+    has = set(roles)
+    if not {"txn_date", "balance", "description"} <= has:
         return None
-    return roles, mode
+    if {"debit", "credit"} <= has and "amount" not in has:
+        return roles, "columns"
+    if "amount" in has and not {"debit", "credit"} & has:     # one signed column (US), D-026
+        return roles, amount_mode(roles)
+    return None
 
 
 def build_prompt(view):

@@ -214,6 +214,11 @@ def build_self_review(statement, report, field_sources=None, template=None, job=
         fields[f"header.{name}"] = {"level": level, "reason": reason}
         if flag and name in WORTH_A_LOOK:
             _item(unsure, f"field:header.{name}", f"header.{name}", f"{name.replace('_', ' ').capitalize()}: {reason}.")
+    routing = (header.get("extra") or {}).get("routing_number")
+    if routing:                                   # US statements (D-026)
+        bad = "invalid_routing_number" in head_codes
+        fields["header.extra.routing_number"] = {"level": "low" if bad else "high",
+                                                 "reason": "fails the ABA checksum" if bad else "passes the ABA checksum"}
     if any(fields[f"header.{k}"]["level"] == "medium" for k in TEXT_FIELDS if f"header.{k}" in fields):
         checked.append("Account details: read by this layout's rules; text fields cannot be checked by arithmetic.")
 

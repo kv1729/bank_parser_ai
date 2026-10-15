@@ -23,8 +23,10 @@ _ROLE_WORDS = (
     ("value_date", re.compile(r"\bvalue\b", re.I)),
     ("txn_date", re.compile(r"\b(date|dt)\b", re.I)),
     ("balance", re.compile(r"\bbalance\b", re.I)),
-    ("debit", re.compile(r"\b(withdrawal|withdrawals|debit|debits|dr)\b", re.I)),
-    ("credit", re.compile(r"\b(deposit|deposits|credit|credits|cr)\b", re.I)),
+    ("dr_cr", re.compile(r"\b(dr\s*/\s*cr|cr\s*/\s*dr)\b", re.I)),
+    ("debit", re.compile(r"\b(withdrawal|withdrawals|debit|debits|dr|subtractions)\b", re.I)),
+    ("credit", re.compile(r"\b(deposit|deposits|credit|credits|cr|additions)\b", re.I)),
+    ("amount", re.compile(r"\bamount\b", re.I)),            # one signed column (US), D-026
     ("reference", re.compile(r"\b(ref|chq|cheque|instrument|utr)\b", re.I)),
     ("description", re.compile(r"\b(narration|description|particulars|details|remarks|transaction)\b", re.I)),
 )
@@ -114,7 +116,10 @@ def choose_date_format(samples):
             parsed = [parse_date(s, (fmt,)) for s in samples]
         except ParseError:
             continue
-        ordered = all(a <= b for a, b in zip(parsed, parsed[1:]))
+        # Oldest-first or newest-first: either order is consistent (a newest-first day-first
+        # statement must not fall through to a month-first format, D-026).
+        ordered = (all(a <= b for a, b in zip(parsed, parsed[1:]))
+                   or all(a >= b for a, b in zip(parsed, parsed[1:])))
         if ordered:
             return fmt
         best = best or fmt

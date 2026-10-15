@@ -1,9 +1,10 @@
 """Run a template against a document: the deterministic known-layout path."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 import time
 
 from bank_parser.extraction.header import apply_header_rules, resolve_pages
+from bank_parser.extraction.parsing import YEARLESS_YEAR
 from bank_parser.extraction.table import Problem, assemble_rows, rows_to_transactions
 from bank_parser.core.schema import Provenance, Statement, StatementHeader, StatementSummary
 
@@ -58,6 +59,29 @@ def build_statement(values, transactions, template=None, *, bank_code=None, bank
     return Statement(header=header, transactions=transactions, summary=summary, provenance=provenance)
 
 
+def resolve_years(statement):
+    """Rows printed without a year ("01/15", "Jan 15") get it from the statement period (D-026):
+    the period-end year, or the year before when the month is later than the period's end month
+    (December rows on a January statement). Returns (statement, problems)."""
+    txns = statement.transactions
+    if not any(t.txn_date and t.txn_date.year == YEARLESS_YEAR for t in txns):
+        return statement, ()
+    end = statement.header.period_end or statement.header.period_start
+    if end is None:
+        return statement, (Problem("date_year_unknown", "rows print no year and the statement period was not found"),)
+
+    def fix(d):
+        if d is None or d.year != YEARLESS_YEAR:
+            return d
+        year = end.year - 1 if d.month > end.month else end.year
+        try:
+            return d.replace(year=year)
+        except ValueError:                  # Feb 29 in a year without one
+            return None
+    fixed = tuple(replace(t, txn_date=fix(t.txn_date), value_date=fix(t.value_date)) for t in txns)
+    return replace(statement, transactions=fixed), ()
+
+
 def extract_with_template(doc, template, document_id=None, strategy="template"):
     """Deterministic extraction of `doc` (an open PdfDocument) using `template`."""
     t0 = time.perf_counter()
@@ -80,6 +104,8 @@ def extract_with_template(doc, template, document_id=None, strategy="template"):
                                                  template.table.line_tolerance, sources)
     statement = build_statement(values, txns, template, document_id=document_id, strategy=strategy,
                                 backend=doc.backend, page_count=count)
+    statement, year_problems = resolve_years(statement)
+    header_problems = tuple(header_problems) + year_problems
     t2 = time.perf_counter()
     return ExtractionResult(statement, tuple(problems) + tuple(row_problems) + tuple(header_problems),
                             {"layout_and_rows": round((t1 - t0) * 1000, 1), "normalize": round((t2 - t1) * 1000, 1)},

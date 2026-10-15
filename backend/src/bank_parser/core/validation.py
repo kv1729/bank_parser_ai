@@ -243,6 +243,14 @@ def validate_rows(statement):
 _IFSC_RE = re.compile(r"^[A-Z]{4}0[A-Z0-9]{6}$")
 
 
+def routing_number_valid(number):
+    """US ABA routing number: 9 digits whose 3-7-1 weighted sum is a multiple of 10 (D-026)."""
+    if not re.fullmatch(r"\d{9}", str(number)):
+        return False
+    d = [int(c) for c in str(number)]
+    return sum(w * x for w, x in zip((3, 7, 1) * 3, d)) % 10 == 0
+
+
 def validate_header(statement):
     """Format checks on header fields the document provides."""
     check = "header"
@@ -259,6 +267,11 @@ def validate_header(statement):
         checked += 1
         if not re.fullmatch(r"[0-9X*]{6,20}", h.account_number):
             issues.append(Issue("invalid_account_number", Severity.FAIL, "account number is not 6-20 digits"))
+    routing = (h.extra or {}).get("routing_number")
+    if routing is not None:
+        checked += 1
+        if not routing_number_valid(routing):
+            issues.append(Issue("invalid_routing_number", Severity.FAIL, "routing number fails the ABA checksum"))
     if h.period_start and h.period_end:
         checked += 1
         if h.period_start > h.period_end:

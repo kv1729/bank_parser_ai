@@ -122,3 +122,52 @@ def detect_drift(text, templates, ifsc=None):
     if bank_code != "unknown" and any(t.bank_code == bank_code for t in templates):
         return bank_code, None, "new_layout_for_known_bank"
     return None
+
+
+# --- 11.6 dashboard --------------------------------------------------------------------------------
+
+def dashboard(db, threshold, templates, weeks=8):
+    """Everything the autonomy page shows: counts, codes, layout ids and dates only."""
+    records = {r["layout"]: r for r in track_record(db, threshold)}
+    versions = {}
+    for t in templates:
+        versions.setdefault(layout_of(t.template_id), set()).add(t.version)
+    with db.connect() as c:
+        goldens = c.execute("""SELECT g.template_id, COALESCE(g.approved_by, 'owner') AS by FROM golden_snapshots g
+                               WHERE g.status = 'active' AND g.version = (SELECT MAX(version) FROM golden_snapshots
+                               WHERE document_id = g.document_id AND status = 'active')""").fetchall()
+        latest = c.execute("""SELECT e.id, e.document_id, e.template_id, e.verified, e.routing_json FROM extractions e
+                              WHERE e.id = (SELECT MAX(id) FROM extractions WHERE document_id = e.document_id)""").fetchall()
+        reviewed = {r[0] for r in c.execute("SELECT extraction_id FROM reviews")}
+        corrections = c.execute("""SELECT strftime('%Y-W%W', updated_at) AS week, COUNT(*) FROM reviews
+                                   WHERE flags_json != '[]' OR missing_json != '[]'
+                                   GROUP BY week ORDER BY week DESC LIMIT ?""", (weeks,)).fetchall()
+        reviews_by_week = dict(c.execute("""SELECT strftime('%Y-W%W', updated_at) AS week, COUNT(*) FROM reviews
+                                            GROUP BY week""").fetchall())
+    per = {}
+    for g in goldens:
+        d = per.setdefault(layout_of(g["template_id"]) or "(no layout)", {"owner": 0, "agent": 0})
+        d[g["by"]] = d.get(g["by"], 0) + 1
+    passing, waiting = {}, []
+    for e in latest:
+        lay = layout_of(e["template_id"]) or "(not learned)"
+        p = passing.setdefault(lay, [0, 0])
+        p[0] += bool(e["verified"])
+        p[1] += 1
+        routing = json.loads(e["routing_json"]) if e["routing_json"] else None
+        if (routing is None or routing.get("required")) and e["id"] not in reviewed:
+            waiting.append({"document": e["document_id"][:12], "layout": lay,
+                            "reason": (routing or {}).get("reason", "before_routing")})
+    layouts = []
+    for lay in sorted(set(records) | set(versions) | set(per) | set(passing)):
+        r = records.get(lay) or {"statements": 0, "matched": 0, "corrected": 0, "unreviewed": 0, "run": 0,
+                                 "threshold": threshold, "earned": False}
+        ok, total = passing.get(lay, [0, 0])
+        layouts.append({"layout": lay, "versions": len(versions.get(lay, ())),
+                        "golden_by_owner": per.get(lay, {}).get("owner", 0),
+                        "golden_by_agent": per.get(lay, {}).get("agent", 0),
+                        "verified": ok, "statements_now": total,
+                        **{k: r[k] for k in ("statements", "matched", "corrected", "unreviewed", "run", "earned")}})
+    return {"threshold": threshold, "layouts": layouts,
+            "interventions": [{"week": w, "corrected": n, "reviews": reviews_by_week.get(w, 0)} for w, n in corrections],
+            "drift": db.drift_events(limit=20), "waiting": waiting}

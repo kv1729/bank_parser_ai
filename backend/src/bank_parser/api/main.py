@@ -13,7 +13,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Response, UploadFi
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
-from bank_parser.autonomy import track_record
+from bank_parser.autonomy import dashboard, track_record
 from bank_parser.config import Settings
 from bank_parser.golden import GoldenError, check_approvable, diff, password_candidates, snapshot
 from bank_parser.pdf import MalformedPdf, PasswordRequired, open_pdf
@@ -60,6 +60,10 @@ def create_app(settings=None, learning_mode="process"):
     @app.get("/review", include_in_schema=False)
     def review_page():
         return FileResponse(settings.frontend_dir / "review.html")
+
+    @app.get("/autonomy", include_in_schema=False)
+    def autonomy_page():
+        return FileResponse(settings.frontend_dir / "autonomy.html")
 
     @app.post("/api/documents")
     async def upload(file: UploadFile = File(...), password: str | None = Form(None), reprocess: bool = Form(False)):
@@ -256,6 +260,14 @@ def create_app(settings=None, learning_mode="process"):
         """Each layout's track record with the owner (Stage 11, D-029). Counts only."""
         return {"threshold": settings.autonomy_threshold, "enabled": settings.autonomy,
                 "layouts": track_record(proc().db, settings.autonomy_threshold)}
+
+    @app.get("/api/autonomy/dashboard")
+    def autonomy_dashboard():
+        """The autonomy page (Stage 11.6): layouts, goldens, pass rates, interventions, drift, waiting."""
+        p = proc()
+        p.registry.reload()
+        return {"enabled": settings.autonomy,
+                **dashboard(p.db, settings.autonomy_threshold, p.registry.all(include_unapproved=True))}
 
     @app.get("/api/training-examples/summary")
     def training_examples_summary():

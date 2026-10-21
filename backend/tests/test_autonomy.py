@@ -271,3 +271,30 @@ def test_drift_is_stored_and_listed_without_content(tmp_path):
     (e,) = db.drift_events("d1")
     assert (e["bank_code"], e["layout"], e["reason"]) == ("sbi", "sbi/layout-x", "template_failed")
     assert db.drift_events("other") == []
+
+
+# --- 11.6 dashboard --------------------------------------------------------------------------------
+
+def test_dashboard_counts_layouts_waiting_statements_and_corrections(tmp_path):
+    from bank_parser.autonomy import dashboard
+    h = History(tmp_path)
+    h.statement("matched")
+    h.statement("corrected")
+    waiting = h.statement("unreviewed")
+    h.db.add_drift(waiting, "boi", LAYOUT, "template_failed")
+    d = dashboard(h.db, 3, [])
+    (L,) = d["layouts"]
+    assert (L["layout"], L["statements"], L["matched"], L["corrected"], L["run"], L["earned"]) == (LAYOUT, 3, 1, 1, 0, False)
+    assert L["verified"] == 3 and L["statements_now"] == 3
+    assert [w["document"] for w in d["waiting"]] == [waiting[:12]] and d["waiting"][0]["reason"] == "before_routing"
+    assert sum(w["corrected"] for w in d["interventions"]) == 1 and d["drift"][0]["reason"] == "template_failed"
+
+
+def test_autonomy_page_and_dashboard_are_served(tmp_path):
+    settings = Settings.from_env(data_dir=tmp_path / "data", committed_templates_dir=COMMITTED_TEMPLATES)
+    with TestClient(create_app(settings, learning_mode="thread")) as client:
+        assert "Agent autonomy" in client.get("/autonomy").text
+        d = client.get("/api/autonomy/dashboard").json()
+    assert d["enabled"] is False and d["threshold"] == 10 and d["waiting"] == []
+    banks = {L["layout"].split("/")[0] for L in d["layouts"]}
+    assert {"sbi", "hdfc"} <= banks and all(L["versions"] >= 1 and L["statements"] == 0 for L in d["layouts"])

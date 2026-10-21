@@ -221,7 +221,8 @@ def create_app(settings=None, learning_mode="process"):
         previous = None if review else p.db.previous_review(document_id, ex["id"])
         self_review = with_self_review(ex).get("self_review")
         return {"extraction_id": ex["id"], "review": review, "previous": previous,
-                "self_review": self_review, "calibration": calibration(self_review, review)}
+                "self_review": self_review, "calibration": calibration(self_review, review),
+                "routing": ex.get("routing")}
 
     @app.put("/api/documents/{document_id}/review")
     def save_review(document_id: str, body: dict = Body(...)):

@@ -121,6 +121,9 @@ class Database:
                 c.execute("ALTER TABLE reviews ADD COLUMN agent_feedback_json TEXT")
             if "self_review_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
                 c.execute("ALTER TABLE extractions ADD COLUMN self_review_json TEXT")
+            # Additive migration (D-029): whether the owner must review this extraction, and why.
+            if "routing_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
+                c.execute("ALTER TABLE extractions ADD COLUMN routing_json TEXT")
             if "occurred_at" not in {r["name"] for r in c.execute("PRAGMA table_info(training_examples)")}:
                 c.execute("ALTER TABLE training_examples ADD COLUMN occurred_at TEXT")
 
@@ -175,16 +178,17 @@ class Database:
 
     # --- extractions --------------------------------------------------------
     def add_extraction(self, doc_id, workflow, strategy, template_id, report, statement, problems, timings,
-                       self_review=None):
+                       self_review=None, routing=None):
         with self.connect() as c:
             cur = c.execute(
                 """INSERT INTO extractions(document_id, workflow, strategy, template_id, validation_status, verified,
-                   report_json, statement_json, problems_json, timings_json, created_at, self_review_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   report_json, statement_json, problems_json, timings_json, created_at, self_review_json, routing_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (doc_id, workflow, strategy, template_id, report["status"], int(report["verified"]),
                  json.dumps(report), json.dumps(statement) if statement is not None else None,
                  json.dumps(problems), json.dumps(timings), utcnow(),
-                 json.dumps(self_review) if self_review is not None else None))
+                 json.dumps(self_review) if self_review is not None else None,
+                 json.dumps(routing) if routing is not None else None))
             return cur.lastrowid
 
     def latest_extraction(self, doc_id):
@@ -198,7 +202,7 @@ class Database:
     @staticmethod
     def _extraction_row(row):
         out = dict(row)
-        for k in ("report_json", "statement_json", "problems_json", "timings_json", "self_review_json"):
+        for k in ("report_json", "statement_json", "problems_json", "timings_json", "self_review_json", "routing_json"):
             out[k[:-5]] = json.loads(out.pop(k)) if out.get(k) else None
         return out
 

@@ -143,3 +143,47 @@ def test_older_self_reviews_get_a_confidence():
     sr = build_self_review(st, report, res.field_sources, t)
     sr.pop("confidence"), sr.pop("basis")
     assert ensure_confidence(sr, st, report, t)["confidence"]["level"] == "high"
+
+
+# --- 11.3 routing ----------------------------------------------------------------------------
+
+def test_only_a_verified_confident_statement_of_an_earned_layout_skips_the_owner():
+    from bank_parser.autonomy import route
+    earned = {"layout": LAYOUT, "run": 10, "threshold": 10, "earned": True}
+    learning = {**earned, "run": 4, "earned": False}
+    high, medium = {"level": "high"}, {"level": "medium"}
+    assert route(high, True, f"{LAYOUT}/v2", earned) == {"required": False, "reason": "earned_and_high",
+                                                         "confidence": "high", "layout": LAYOUT, "run": 10,
+                                                         "threshold": 10}
+    assert route(high, True, f"{LAYOUT}/v2", learning)["reason"] == "layout_not_earned"
+    assert route(medium, True, f"{LAYOUT}/v2", earned)["reason"] == "confidence_medium"
+    assert route(high, False, f"{LAYOUT}/v2", earned)["reason"] == "not_verified"
+    assert route(high, True, None, None)["reason"] == "no_layout"
+
+
+def _upload(tmp_path, **overrides):
+    from tests.helpers import SBI_PDF
+    settings = Settings.from_env(data_dir=tmp_path / "data", committed_templates_dir=COMMITTED_TEMPLATES, **overrides)
+    with TestClient(create_app(settings, learning_mode="thread")) as client:
+        with open(SBI_PDF, "rb") as f:
+            doc_id = client.post("/api/documents", files={"file": ("s.pdf", f, "application/pdf")}).json()["document_id"]
+        for _ in range(100):
+            got = client.get(f"/api/documents/{doc_id}").json()
+            if got["document"]["status"] not in ("RECEIVED", "PROCESSING"):
+                break
+            time.sleep(0.1)
+        return got, client.get(f"/api/documents/{doc_id}/review").json()
+
+
+def test_today_every_statement_still_goes_to_the_owner(tmp_path):
+    got, review = _upload(tmp_path)
+    r = got["extraction"]["routing"]
+    assert got["document"]["status"] == "EXTRACTED"                       # statuses keep their meaning
+    assert r["required"] and r["reason"] == "layout_not_earned" and r["run"] == 0 and r["threshold"] == 10
+    assert review["routing"] == r
+
+
+def test_an_earned_layout_with_a_confident_statement_is_not_sent_to_the_owner(tmp_path):
+    got, _ = _upload(tmp_path, autonomy_threshold=0)
+    assert got["extraction"]["routing"]["required"] is False
+    assert got["extraction"]["routing"]["reason"] == "earned_and_high"

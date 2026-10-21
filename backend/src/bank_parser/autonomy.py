@@ -72,3 +72,34 @@ def layout_earned(db, threshold, template_id):
     """True when the template's layout has earned autonomy."""
     lay = layout_of(template_id)
     return bool(lay) and any(r["earned"] for r in track_record(db, threshold, lay))
+
+
+# --- 11.3 routing: who checks this statement ---------------------------------------------------
+
+def route(confidence, verified, template_id, record):
+    """Whether the owner must review an extraction, and why (codes and counts only).
+    Not required only when it is verified, its confidence is high and its layout has earned
+    autonomy; everything else goes to the owner, as before Stage 11."""
+    level = (confidence or {}).get("level")
+    if not verified:
+        reason = "not_verified"
+    elif level != "high":
+        reason = f"confidence_{level or 'unknown'}"
+    elif not template_id or record is None:
+        reason = "no_layout"
+    elif not record["earned"]:
+        reason = "layout_not_earned"
+    else:
+        reason = "earned_and_high"
+    out = {"required": reason != "earned_and_high", "reason": reason, "confidence": level}
+    if record is not None:
+        out.update(layout=record["layout"], run=record["run"], threshold=record["threshold"])
+    return out
+
+
+def route_extraction(db, threshold, template_id, confidence, verified):
+    lay = layout_of(template_id)
+    record = next(iter(track_record(db, threshold, lay)), None) if lay else None
+    if lay and record is None:        # the layout's first statement: nothing on record yet
+        record = {"layout": lay, "run": 0, "threshold": threshold, "earned": threshold <= 0}
+    return route(confidence, verified, template_id, record)

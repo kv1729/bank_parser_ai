@@ -223,7 +223,8 @@ async function renderOutput(doc, ex, token) {
   current = { docId: doc.id, extractionId: ex.id, txnCount, flags: new Set(review ? review.flags : []),
               missing: new Set(review ? review.missing || [] : []), remarks: review ? review.remarks : "",
               feedback: Object.assign({}, review ? review.agent_feedback || {} : {}),
-              sr: saved.extraction_id === ex.id ? saved.self_review : null };
+              sr: saved.extraction_id === ex.id ? saved.self_review : null,
+              routing: saved.extraction_id === ex.id ? saved.routing : null };
   dirty = false;
 
   const issueRows = new Set();
@@ -389,6 +390,10 @@ function selfReviewBox(sr, cal) {
       + (c.covered_by_track_record && c.covered_by_track_record.length ? "; left to the layout's track record: " + c.covered_by_track_record.join(", ") : "");
     box.append(" ", pill);
   }
+  const R = current.routing;          // who checks it (Stage 11.3, D-029)
+  if (R) box.append(el("div", R.required
+      ? `Your review is needed (${R.reason.replaceAll("_", " ")}` + (R.layout ? `; layout ${R.layout}: ${R.run} of ${R.threshold} reviews in a row without a correction` : "") + ")."
+      : `Your review is not needed: confident, and layout ${R.layout} has earned autonomy (${R.run} of ${R.threshold}).`, "muted"));
   const L = sr.learning;
   if (L && L.template) {
     const how = L.proposer ? `learned by ${L.proposer}` + (L.columns ? `, columns named ${L.columns}` : "") + (L.model ? ` (${L.model})` : "")

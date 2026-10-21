@@ -17,6 +17,7 @@ import logging
 import threading
 import time
 
+from bank_parser.autonomy import route_extraction
 from bank_parser.config import Settings
 from bank_parser.extraction.detection import detection_text
 from bank_parser.extraction.engine import extract_with_template
@@ -221,8 +222,11 @@ class Processor:
         review = build_self_review(data, report_d, result.field_sources, template, job)
         # The owner's earlier corrections on this layout (D-027).
         review = apply_history(review, self.db.example_history(template_id))
+        # Who checks it (D-029): the owner, unless confident and the layout has earned autonomy.
+        routing = route_extraction(self.db, self.settings.autonomy_threshold, template_id,
+                                   review.get("confidence"), bool(report_d.get("verified")) and not problems)
         self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
-                               problems, dict(result.timings_ms, **timings), review)
+                               problems, dict(result.timings_ms, **timings), review, routing)
 
     def _finish(self, document_id, report, result):
         ok = report.verified and not result.problems

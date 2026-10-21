@@ -103,3 +103,22 @@ def route_extraction(db, threshold, template_id, confidence, verified):
     if lay and record is None:        # the layout's first statement: nothing on record yet
         record = {"layout": lay, "run": 0, "threshold": threshold, "earned": threshold <= 0}
     return route(confidence, verified, template_id, record)
+
+
+# --- 11.5 layout drift ---------------------------------------------------------------------------
+
+def detect_drift(text, templates, ifsc=None):
+    """For a statement no template could read: (bank_code, layout, reason) when it comes from a bank
+    we already have templates for, else None. `template_failed`: a known layout's markers match but
+    its reading fails validation (the layout changed inside); `new_layout_for_known_bank`: no known
+    layout's markers match (the bank prints a new layout)."""
+    from bank_parser.extraction.detection import detect
+    from bank_parser.extraction.generic_rules import identify_bank
+    matched = detect(text, templates)
+    if matched:
+        t = matched[0].template
+        return t.bank_code, layout_of(t.template_id), "template_failed"
+    bank_code, _ = identify_bank(ifsc, text)
+    if bank_code != "unknown" and any(t.bank_code == bank_code for t in templates):
+        return bank_code, None, "new_layout_for_known_bank"
+    return None

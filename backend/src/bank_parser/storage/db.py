@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS golden_snapshots (
     approved_at       TEXT NOT NULL,
     UNIQUE (document_id, version)
 );
+-- Layout drift (Stage 11.5, D-029): a statement from a bank we have templates for that none of
+-- them reads. Codes and layout ids only.
+CREATE TABLE IF NOT EXISTS drift_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id   TEXT NOT NULL REFERENCES documents(id),
+    bank_code     TEXT NOT NULL,
+    layout        TEXT,                        -- the known layout that failed, if one matched
+    reason        TEXT NOT NULL,               -- template_failed | new_layout_for_known_bank
+    created_at    TEXT NOT NULL
+);
 -- Training examples (Stage 10.7, D-027): the owner's approvals and corrections in a form the
 -- template agent and the self-review use. Append-only; never statement values, only heading
 -- words, roles, field names, counts and verdicts. `example_key` makes re-recording a no-op.
@@ -399,6 +409,18 @@ class Database:
                                  ORDER BY {when}, id""",
                              (layout, layout + "/%", t, t, i)).fetchall()
         return [{"kind": r["kind"], **json.loads(r["payload_json"])} for r in rows]
+
+    # --- layout drift (Stage 11.5, D-029) -----------------------------------------------
+    def add_drift(self, document_id, bank_code, layout, reason):
+        with self.connect() as c:
+            c.execute("""INSERT INTO drift_events(document_id, bank_code, layout, reason, created_at)
+                         VALUES (?, ?, ?, ?, ?)""", (document_id, bank_code, layout, reason, utcnow()))
+
+    def drift_events(self, document_id=None, limit=100):
+        with self.connect() as c:
+            rows = c.execute("SELECT * FROM drift_events" + (" WHERE document_id = ?" if document_id else "")
+                             + " ORDER BY id DESC LIMIT ?", ((document_id, limit) if document_id else (limit,))).fetchall()
+        return [dict(r) for r in rows]
 
     def review_counts(self):
         """{document_id: number of outputs marked wrong or missing} for each document's latest review."""

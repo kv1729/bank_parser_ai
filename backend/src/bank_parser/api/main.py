@@ -113,7 +113,12 @@ def create_app(settings=None, learning_mode="process"):
         p = proc()
         doc = require_document(document_id)
         return {"document": doc, "extraction": with_self_review(p.db.latest_extraction(document_id)),
-                "template_job": p.db.latest_template_job(document_id)}
+                "template_job": p.db.latest_template_job(document_id), "drift": p.db.drift_events(document_id)}
+
+    @app.get("/api/drift")
+    def drift_events():
+        """Statements from a known bank that no known layout read (Stage 11.5, D-029). Codes only."""
+        return proc().db.drift_events()
 
     @app.get("/api/templates")
     def list_templates():

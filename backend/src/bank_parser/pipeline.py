@@ -17,7 +17,7 @@ import logging
 import threading
 import time
 
-from bank_parser.autonomy import route_extraction
+from bank_parser.autonomy import detect_drift, route_extraction
 from bank_parser.config import Settings
 from bank_parser.extraction.detection import detection_text
 from bank_parser.extraction.engine import extract_with_template
@@ -190,6 +190,13 @@ class Processor:
             # background. Learning starts only after this result is stored, so a re-extraction with
             # the learned template can never be overtaken by this older result (D-023).
             result, report = extract_unknown(doc, path, password, document_id)
+            templates = self.registry.all()
+        # A known bank that none of its templates reads: the layout changed (D-029). The agent
+        # learns the new one below; old versions are kept, and it starts its own track record.
+        ifsc = result.statement.header.ifsc if result.statement is not None else None
+        drift = detect_drift(text, templates, ifsc)
+        if drift is not None:
+            db.add_drift(document_id, *drift)
         timings = {"classify_ms": _ms(t0, t_classify), "detect_ms": _ms(t_classify, t_detect)}
         if result.statement is None:
             db.add_extraction(document_id, "unknown_layout", UNKNOWN_STRATEGY, None,

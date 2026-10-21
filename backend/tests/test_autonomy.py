@@ -240,3 +240,34 @@ def test_agent_approvals_do_not_count_in_the_track_record(tmp_path):
                     approved_by="agent")
     r = _record(h)
     assert r["matched"] == 0 and r["unreviewed"] == 1
+
+
+# --- 11.5 layout drift ---------------------------------------------------------------------------
+
+def _committed():
+    from bank_parser.templates import TemplateRegistry
+    return TemplateRegistry([COMMITTED_TEMPLATES]).all()
+
+
+def test_a_known_layout_that_no_longer_reads_is_drift():
+    from bank_parser.autonomy import detect_drift
+    templates = _committed()
+    sbi = next(t for t in templates if t.bank_code == "sbi")
+    bank, layout, reason = detect_drift(" ".join(sbi.markers), templates)
+    assert (bank, reason) == ("sbi", "template_failed") and layout == sbi.template_id.rsplit("/", 1)[0]
+
+
+def test_a_new_layout_from_a_known_bank_is_drift_and_an_unknown_bank_is_not():
+    from bank_parser.autonomy import detect_drift
+    templates = _committed()
+    assert detect_drift("Account statement", templates, ifsc="SBIN0001234") == ("sbi", None, "new_layout_for_known_bank")
+    assert detect_drift("Account statement", templates, ifsc="ZZZZ0001234") is None
+
+
+def test_drift_is_stored_and_listed_without_content(tmp_path):
+    db = Database(tmp_path / "d.db")
+    db.upsert_document("d1", "d1.pdf", 1)
+    db.add_drift("d1", "sbi", "sbi/layout-x", "template_failed")
+    (e,) = db.drift_events("d1")
+    assert (e["bank_code"], e["layout"], e["reason"]) == ("sbi", "sbi/layout-x", "template_failed")
+    assert db.drift_events("other") == []

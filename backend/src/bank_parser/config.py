@@ -51,6 +51,10 @@ class Settings:
     learning_proposers: tuple = ("heuristic", "examples", "llm")
     upload_chunk_bytes: int = 1024 * 1024
     max_upload_bytes: int | None = None     # None = no limit (infrastructure guard only)
+    # Autonomy (Stage 11, D-029): a layout has earned it after this many statements in a row that
+    # the owner reviewed without a correction. `autonomy` off: the agent never approves on its own.
+    autonomy_threshold: int = 10
+    autonomy: bool = False
 
     @property
     def documents_dir(self):
@@ -88,6 +92,8 @@ class Settings:
                                                                        "heuristic,examples,llm").split(",") if p.strip()),
             upload_chunk_bytes=_int("BANK_PARSER_UPLOAD_CHUNK_BYTES", 1024 * 1024),
             max_upload_bytes=_int("BANK_PARSER_MAX_UPLOAD_BYTES", None),
+            autonomy_threshold=_int("BANK_PARSER_AUTONOMY_THRESHOLD", 10),
+            autonomy=os.environ.get("BANK_PARSER_AUTONOMY", "off").strip().lower() in ("on", "1", "true", "yes"),
         )
         values.update(overrides)
         return cls(**values)

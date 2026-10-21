@@ -16,7 +16,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
 | 9 | Golden set & non-regression gate | Done | 2026-10-14 | 2026-10-14 |
 | 10 | Local AI agent (open-source model), trained with human review | Done | 2026-10-14 | 2026-10-21 |
-| 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
+| 11 | Confidence & autonomy (remove the human from the loop) | In progress | 2026-10-21 | — |
 | 12 | Password vault & intake | Not started | — | — |
 | 13 | OCR for scanned PDFs | Not started | — | — |
 | 14 | Production hardening | Not started | — | — |
@@ -195,11 +195,20 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
 - **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).
 
-## 11. Confidence & autonomy — Not started
+## 11. Confidence & autonomy — In progress
 
 - **Goal:** Remove the human from the loop wherever the system has earned it.
 - **Deliverables:** Confidence score per document and field; agent auto-approval of golden snapshots per layout after a track record; automatic routing of low-confidence cases to a human; layout-drift detection; autonomy dashboard.
 - **Exit criteria (to be confirmed with the owner):** For a layout, the agent's results matched the human on ≥ 10 consecutive statements with zero corrections → that layout runs without human approval.
+- **Started:** 2026-10-21, on branch `stage-11-autonomy`, one commit per step.
+- **Steps:**
+  - [x] **11.1 Track record per layout** (E1): `autonomy.track_record`. Each statement is matched, corrected or unreviewed by the owner's reviews and owner goldens; the run is the matches since the last correction; a layout has earned autonomy at run ≥ `BANK_PARSER_AUTONOMY_THRESHOLD` (default 10). `GET /api/autonomy`.
+  - [ ] 11.2 Confidence per statement
+  - [ ] 11.3 Routing: only low confidence or unearned layouts ask the owner
+  - [ ] 11.4 The agent approves golden snapshots (off until the owner switches it on)
+  - [ ] 11.5 Drift detection
+  - [ ] 11.6 Autonomy dashboard
+  - [ ] 11.7 Close-out (D-029)
 
 ## 12. Password vault & intake — Not started
 

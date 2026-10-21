@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) 10.4 (self-review), 10.5 (text checks), 10.6 (US formats) and 10.7 (feedback as training examples) are done (D-023 – D-027). **Next:** 10.8, held-out evaluation. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: each verdict is now stored as an example. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent) is done (2026-10-14 – 2026-10-21, D-023 – D-028). The held-out evaluation met its exit criterion: the local model alone learned 12/12 unseen statements correctly, with none accepted wrongly. **Next:** Stage 11, confidence & autonomy, or Stage 7 (more statements), as the owner chooses. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: each verdict is now stored as an example. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -15,7 +15,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 7 | Accuracy corpus, review & first golden statements | In progress | 2026-10-06 | — |
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
 | 9 | Golden set & non-regression gate | Done | 2026-10-14 | 2026-10-14 |
-| 10 | Local AI agent (open-source model), trained with human review | In progress | 2026-10-14 | — |
+| 10 | Local AI agent (open-source model), trained with human review | Done | 2026-10-14 | 2026-10-21 |
 | 11 | Confidence & autonomy (remove the human from the loop) | Not started | — | — |
 | 12 | Password vault & intake | Not started | — | — |
 | 13 | OCR for scanned PDFs | Not started | — | — |
@@ -158,7 +158,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - The 3 real statements are golden.
 - **Evidence:** owner approved statements 1–3 (golden v1 each); `regress --backends both`: 3 × PASS on pypdfium2 in 35–206 ms. pdfplumber (informational) differs only on statement 3, where each description's last line moves to the next row (the known limitation, Stage 8). `tests/test_golden.py` (approval rules, one changed description → DIFF at exactly `transactions[5].description`, template fallback caught, agent gate refuses and never saves); 204 tests pass; fingerprints of all real and synthetic outputs identical after the refactor. C6: 3 anonymised layout copies, `tests/test_layout_fixtures.py` passes (208 tests in all).
 
-## 10. Local AI agent (open-source model), trained with human review — In progress
+## 10. Local AI agent (open-source model), trained with human review — Done
 
 - **Goal:** Unknown layouts are extracted without a human: a local model reads the statement, proposes a template and, when no recipe fits, the extraction itself; everything passes the self-check and the regression gate.
 - **Deliverables:**
@@ -179,7 +179,10 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] **10.4 Agent self-review** (D-024): for every extraction, what was checked, what is unsure (with ids), a confidence per field (high / medium / low / missing, with the reason) and how the template was made. Deterministic, never values. Shown in `/review` with Agree/Disagree and a note per item, plus a calibration line comparing the owner's marks with the ratings.
   - [x] **10.6 US formats** (D-026): month-first, month-name and year-less dates (year from the period), trailing-minus amounts, routing number with the ABA checksum, US header labels, signed amount columns. Two synthetic US statements are read exactly as printed; India unchanged (`regress`, 10.1 check, full suite).
   - [x] **10.7 Feedback as training examples** (D-027): approvals, review marks and Agree/Disagree stored as examples (no values). Approved headings label new tables without the model (8/10 instead of 6/10, no wrong labelling), corrected fields are not rated high again until re-approved, and repeatedly unhelpful worries are muted. Few-shot examples for the model were tried and dropped (they hurt tables with little heading text).
-  - [ ] Evaluation on held-out statements: success rate, time, re-tries.
+  - [x] **10.8 Held-out evaluation** (D-028), 12 unseen statements:
+    - **Model alone:** 12/12 correct, none accepted wrongly; median 72 s, 1 retry.
+    - **App default:** 22/24 correct, none accepted wrongly; the 2 failures were the model failing to load for lack of memory, and the rerun was 2/2.
+    - Fixed along the way: an unavailable model is no longer skipped silently; server failures are retried; model use is counted per job.
 - **Sub-steps:**
   - 10.1 model choice ✅
   - 10.2 AI template proposer ✅
@@ -188,7 +191,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - 10.5 text checks ✅
   - 10.6 US formats ✅
   - 10.7 feedback as training examples ✅
-  - 10.8 held-out evaluation
+  - 10.8 held-out evaluation ✅
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
 - **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).
 
@@ -210,7 +213,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 ## 14. Production hardening — Not started
 
 - **Goal:** Make the app safe to run beyond localhost.
-- **Deliverables:** Authentication; background jobs that survive restarts; deployment (container); monitoring; safe logging; compliance controls from D-020: retention/deletion policy, audit log, breach-response runbook (CHECKPOINT H2–H4).
+- **Deliverables:** Authentication; background jobs that survive restarts; learning jobs that failed because the local model could not load (out of memory) retried later, with a memory check before loading (D-028); deployment (container); monitoring; safe logging; compliance controls from D-020: retention/deletion policy, audit log, breach-response runbook (CHECKPOINT H2–H4).
 
 ## 15. MCP / agent interface — Not started
 

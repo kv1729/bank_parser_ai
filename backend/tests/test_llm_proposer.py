@@ -214,3 +214,67 @@ def test_workflow_1_leaves_tables_without_heading_words_to_the_agent():
     from bank_parser.extraction.unknown import extract_unruled
     doc, _, _ = _copy("sbi-d2e542a8")
     assert extract_unruled(doc) == (None, None)
+
+
+# --- the model server failing (D-028) ---------------------------------------------------------
+
+class _FlakyServer:
+    """A local fake Ollama: answers /api/chat with HTTP 500 `fails` times, then a valid answer."""
+
+    def __init__(self, fails):
+        import http.server
+        import threading
+        state = {"fails": fails, "calls": 0}
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                state["calls"] += 1
+                if state["fails"] > 0:
+                    state["fails"] -= 1
+                    self.send_response(500)
+                    self.end_headers()
+                    return
+                body = json.dumps({"message": {"content": json.dumps({"roles": ["txn_date"]})},
+                                   "prompt_eval_count": 10, "eval_count": 5}).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        self.state = state
+        self.httpd = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.httpd.server_port}"
+
+    def close(self):
+        self.httpd.shutdown()
+
+
+def test_a_server_failure_is_retried_once():
+    server = _FlakyServer(fails=1)
+    try:
+        reply = OllamaClient(server.url, retry_pause=0).chat_json("m", "s", "p", {})
+        assert reply.data == {"roles": ["txn_date"]} and reply.retries == 1 and server.state["calls"] == 2
+    finally:
+        server.close()
+
+
+def test_two_server_failures_are_reported():
+    from bank_parser.llm.ollama import ServerFailure
+    server = _FlakyServer(fails=2)
+    try:
+        with pytest.raises(ServerFailure):
+            OllamaClient(server.url, retry_pause=0).chat_json("m", "s", "p", {})
+        assert server.state["calls"] == 2
+    finally:
+        server.close()
+
+
+def test_model_calls_and_failures_are_recorded_per_attempt(registry):
+    swapped = ["credit" if r == "debit" else "debit" if r == "credit" else r for r in SBI_ROLES]
+    out = llm_only_agent(registry, FakeClient([answer(swapped)])).learn(SBI_PDF)
+    assert out.attempts[-1]["llm_calls"] == 1 and out.attempts[-1]["llm_failures"] == 0

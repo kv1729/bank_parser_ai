@@ -59,3 +59,64 @@ def test_regression_against_other_layouts(registry):
     out = TemplateAgent(registry, [RegressionDoc(str(HDFC_PDF), HDFC_LAYOUT)]).learn(SBI_PDF)
     assert out.status is LearningStatus.ACCEPTED
     assert "1 other-layout" in out.reason
+
+
+# --- every proposer passes the same gates (CHECKPOINT D6, D-028) -----------------------------
+
+def _proposers():
+    from bank_parser.learning import llm_view
+    from bank_parser.learning.examples import ExamplesProposer
+    from bank_parser.learning.proposers import HeuristicProposer, LLMProposer
+    from bank_parser.llm.ollama import LLMReply
+
+    class Client:
+        def has_model(self, model):
+            return True
+
+        def chat_json(self, *a, **k):
+            return LLMReply({"roles": ["txn_date", "value_date", "description", "reference", "debit", "credit",
+                                       "balance"]}, 10, 5, 0.1)
+
+    class Examples(ExamplesProposer):        # labels the table as the familiar words would
+        def propose(self, ctx):
+            view = llm_view.find_first_table(ctx.doc)
+            from bank_parser.learning.proposers import template_for
+            layout = llm_view.layout_from_roles(ctx.doc, view, *llm_view.word_roles(view))
+            yield template_for(ctx, layout.spec, self.name, {"role_source": "examples"})
+
+        def available(self):
+            return True
+
+    return {"heuristic": HeuristicProposer(), "examples": Examples(),
+            "llm": LLMProposer(Client(), "test-model")}
+
+
+@pytest.mark.parametrize("name", ["heuristic", "examples", "llm"])
+def test_every_proposer_is_refused_by_the_golden_gate(tmp_path, name):
+    from bank_parser.learning.agent import LearningBudget as Budget
+
+    class NoSave(TemplateRegistry):
+        def save(self, template):
+            raise AssertionError("a refused template must never be saved")
+
+    refused = []
+
+    def gate(templates):
+        refused.append(len(templates))
+        return False, "would change the output of 1 golden statement(s)"
+
+    agent = TemplateAgent(NoSave([], tmp_path), budget=Budget(max_llm_tokens=10_000), proposers=[_proposers()[name]],
+                          golden_check=gate)
+    out = agent.learn(SBI_PDF)
+    assert out.status is LearningStatus.HUMAN_REVIEW and refused
+    assert out.attempts and all(a["proposer"] == name and not a["accepted"] for a in out.attempts)
+    assert any(a["validation"] in ("PASS", "WARN") for a in out.attempts)    # it passed the self-check first
+
+
+def test_learn_document_is_what_learn_runs(tmp_path):
+    from bank_parser.pdf import open_pdf
+    a = TemplateAgent(TemplateRegistry([], tmp_path / "a")).learn(SBI_PDF)
+    with open_pdf(SBI_PDF) as doc, open_pdf(SBI_PDF, None, "pdfplumber") as cells:
+        b = TemplateAgent(TemplateRegistry([], tmp_path / "b")).learn_document(doc, cells)
+    assert (a.status, a.template_id, [x["columns"] for x in a.attempts]) == \
+        (b.status, b.template_id, [x["columns"] for x in b.attempts])

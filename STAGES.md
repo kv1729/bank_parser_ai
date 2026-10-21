@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent) is done (2026-10-14 – 2026-10-21, D-023 – D-028). The held-out evaluation met its exit criterion: the local model alone learned 12/12 unseen statements correctly, with none accepted wrongly. **Next:** Stage 11, confidence & autonomy, or Stage 7 (more statements), as the owner chooses. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: each verdict is now stored as an example. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 11 (confidence & autonomy) is **built** (D-029, 2026-10-21): track record per layout, confidence per statement, routing, agent approval (off by default), drift detection and the `/autonomy` dashboard. It finishes when a real layout earns autonomy, which needs about 10 reviewed statements per layout (Stage 7 feeds it). **Owner:** decide the threshold, whether a statement fixed by code before approval counts as a correction, and when to switch `BANK_PARSER_AUTONOMY=on`. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: each verdict is now stored as an example. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 | 8 | Speed | Done (remaining robustness items moved to 7 and 10) | 2026-10-05 | 2026-10-14 |
 | 9 | Golden set & non-regression gate | Done | 2026-10-14 | 2026-10-14 |
 | 10 | Local AI agent (open-source model), trained with human review | Done | 2026-10-14 | 2026-10-21 |
-| 11 | Confidence & autonomy (remove the human from the loop) | In progress | 2026-10-21 | — |
+| 11 | Confidence & autonomy (remove the human from the loop) | Built; earning track record | 2026-10-21 | — |
 | 12 | Password vault & intake | Not started | — | — |
 | 13 | OCR for scanned PDFs | Not started | — | — |
 | 14 | Production hardening | Not started | — | — |
@@ -195,7 +195,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
 - **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).
 
-## 11. Confidence & autonomy — In progress
+## 11. Confidence & autonomy — Built; earning track record
 
 - **Goal:** Remove the human from the loop wherever the system has earned it.
 - **Deliverables:** Confidence score per document and field; agent auto-approval of golden snapshots per layout after a track record; automatic routing of low-confidence cases to a human; layout-drift detection; autonomy dashboard.
@@ -208,7 +208,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] **11.4 The agent approves golden snapshots** (E2), **off by default** (`BANK_PARSER_AUTONOMY=on`): a statement routed as not needing the owner becomes golden with `approved_by = agent` (additive column), through the same re-extraction rule as the owner's approval (`golden.check_agent_approvable`). Only statements without a golden; never a new version of a changed golden (D-022 stays the owner's); only the expected warning (no opening balance). Agent approvals never count in the track record. `/review` says when the agent approved.
   - [x] **11.5 Drift detection** (E4): a statement that no template reads, from a bank that has templates, is recorded (`drift_events`: bank, layout, `template_failed` when a known layout's markers match but its reading fails, `new_layout_for_known_bank` otherwise). The agent learns the new layout as before; old versions are kept, and the new layout starts its own track record. `GET /api/drift`; shown on the upload page.
   - [x] **11.6 Autonomy dashboard** (E5): `/autonomy` shows each layout's run toward autonomy and whether it has earned it, statements matched / corrected / not reviewed, how many are verified now, goldens by owner and by agent, statements waiting for review (and why), corrections per week, and layout changes. Counts and codes only.
-  - [ ] 11.7 Close-out (D-029)
+  - [x] **11.7 Close-out** (D-029). Built and proven on synthetic histories. Real layouts today: SBI ×2 and HDFC at run 1 of 10, BOI and ICICI at 0. **Exit still open:** a real layout must reach the threshold.
 
 ## 12. Password vault & intake — Not started
 

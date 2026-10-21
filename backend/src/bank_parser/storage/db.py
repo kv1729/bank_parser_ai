@@ -124,6 +124,9 @@ class Database:
             # Additive migration (D-029): whether the owner must review this extraction, and why.
             if "routing_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
                 c.execute("ALTER TABLE extractions ADD COLUMN routing_json TEXT")
+            # Additive migration (D-029): who approved a golden version, the owner or the agent.
+            if "approved_by" not in {r["name"] for r in c.execute("PRAGMA table_info(golden_snapshots)")}:
+                c.execute("ALTER TABLE golden_snapshots ADD COLUMN approved_by TEXT NOT NULL DEFAULT 'owner'")
             if "occurred_at" not in {r["name"] for r in c.execute("PRAGMA table_info(training_examples)")}:
                 c.execute("ALTER TABLE training_examples ADD COLUMN occurred_at TEXT")
 
@@ -292,8 +295,9 @@ class Database:
 
     # --- golden statements ----------------------------------------------------------
     def add_golden(self, doc_id, extraction_id, snapshot, workflow, template_id, backend, engine_commit,
-                   validation_status, warnings, password_source):
-        """Store a new golden version for the document (never replaces an older one)."""
+                   validation_status, warnings, password_source, approved_by="owner"):
+        """Store a new golden version for the document (never replaces an older one).
+        `approved_by`: "owner", or "agent" for a layout that has earned autonomy (D-029)."""
         with self.connect() as c:
             c.execute("BEGIN IMMEDIATE")
             try:
@@ -301,10 +305,10 @@ class Database:
                                     (doc_id,)).fetchone()[0]
                 c.execute("""INSERT INTO golden_snapshots(document_id, version, extraction_id, snapshot_json, workflow,
                                template_id, backend, engine_commit, validation_status, warnings_json, password_source,
-                               approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                               approved_at, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                           (doc_id, version, extraction_id, json.dumps(snapshot, sort_keys=True), workflow, template_id,
                            backend, engine_commit, validation_status, json.dumps(sorted(set(warnings))),
-                           password_source, utcnow()))
+                           password_source, utcnow(), approved_by))
                 c.execute("COMMIT")
             except BaseException:
                 c.execute("ROLLBACK")

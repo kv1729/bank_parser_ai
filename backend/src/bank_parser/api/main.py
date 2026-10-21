@@ -263,7 +263,7 @@ def create_app(settings=None, learning_mode="process"):
     def golden_info(g):
         return None if g is None else {k: g[k] for k in ("version", "extraction_id", "workflow", "template_id",
                                                          "backend", "engine_commit", "validation_status", "warnings",
-                                                         "approved_at")}
+                                                         "approved_at", "approved_by")}
 
     @app.get("/api/documents/{document_id}/golden")
     def get_golden(document_id: str):

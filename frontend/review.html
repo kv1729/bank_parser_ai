@@ -332,7 +332,7 @@ function goldenBox(gold, ex) {
   if (!g) return el("div", "Not golden yet. When every field is OK and saved, approve it as golden: from then on any change to its output is caught.", "muted");
   const changes = gold.differs || [];
   const box = el("div", null, "golden" + (changes.length ? " differs" : ""));
-  box.append(el("strong", `Golden v${g.version}`), el("span", ` · approved ${ist(g.approved_at)} · extraction #${g.extraction_id}${g.template_id ? " · " + g.template_id : ""}`, "muted"));
+  box.append(el("strong", `Golden v${g.version}`), el("span", ` · approved${g.approved_by === "agent" ? " by the agent (its layout earned autonomy; you can still mark it)" : ""} ${ist(g.approved_at)} · extraction #${g.extraction_id}${g.template_id ? " · " + g.template_id : ""}`, "muted"));
   if (changes.length) {
     box.append(el("div", `This extraction differs from the golden output in ${changes.length} field(s). If the new output is right, check it and approve again (v${g.version + 1}); v${g.version} is kept.`));
     const ul = el("ul");

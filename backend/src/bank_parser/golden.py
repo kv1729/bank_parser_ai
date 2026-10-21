@@ -165,6 +165,12 @@ def check_approvable(db, settings, templates, document_id, extraction_id, acknow
     if warnings and not acknowledge_warnings:
         raise GoldenError(f"validation has {len(warnings)} warning(s); confirm you checked them", "warnings",
                           {"warnings": warnings})
+    return _fresh_approval(settings, templates, document_id, latest, warnings)
+
+
+def _fresh_approval(settings, templates, document_id, latest, warnings):
+    """Re-extract as the app would now; the result must equal the stored one. Returns add_golden kwargs.
+    The PDF must open with no password or a line of the password file, so it can be re-checked later."""
     path = settings.documents_dir / f"{document_id}.pdf"
     source, password = reopen(path, password_candidates(settings))
     fresh = extract_now(path, password, templates, settings.pdf_backend, document_id)
@@ -172,9 +178,36 @@ def check_approvable(db, settings, templates, document_id, extraction_id, acknow
     if changes:
         raise GoldenError(f"the output changed since your review ({len(changes)} field(s)): re-extract and review "
                           "again", "stale", {"fields": [c.path for c in changes][:50]})
-    return dict(extraction_id=extraction_id, snapshot=snapshot(fresh.statement), workflow=fresh.workflow,
+    return dict(extraction_id=latest["id"], snapshot=snapshot(fresh.statement), workflow=fresh.workflow,
                 template_id=fresh.template_id, backend=settings.pdf_backend, engine_commit=engine_commit(),
                 validation_status=latest["validation_status"], warnings=warnings, password_source=source)
+
+
+# Warnings a statement approved by the agent may have: only the ones a correct statement has
+# (it prints no opening balance). Anything else needs the owner (D-029).
+AGENT_WARNINGS = ("no_opening_balance",)
+
+
+def check_agent_approvable(db, settings, templates, document_id, extraction_id):
+    """
+    The agent's own approval (Stage 11.4, D-029), in place of the owner's review: only for a
+    statement that is routed as not needing the owner (verified, high confidence, its layout has
+    earned autonomy) and has no golden yet. It never re-approves a changed golden: that stays
+    the owner's (D-022). Same re-extraction rule as the owner's path. Raises GoldenError.
+    """
+    latest = db.latest_extraction(document_id)
+    if latest is None or latest["id"] != extraction_id:
+        raise GoldenError("only the latest extraction can be approved", "not_latest")
+    if db.golden_for(document_id) is not None:
+        raise GoldenError("this statement is golden already; only the owner approves a new version", "already_golden")
+    if (latest.get("routing") or {}).get("required", True):
+        raise GoldenError("the owner must review this statement", "review_required")
+    if latest["statement"] is None or latest["validation_status"] == "FAIL":
+        raise GoldenError("validation failed: a failing extraction cannot be golden", "validation_failed")
+    warnings = warning_codes(latest["report"] or {})
+    if set(warnings) - set(AGENT_WARNINGS):
+        raise GoldenError("validation has warnings only the owner can accept", "warnings", {"warnings": warnings})
+    return _fresh_approval(settings, templates, document_id, latest, warnings)
 
 
 # --- regression ---------------------------------------------------------------------------

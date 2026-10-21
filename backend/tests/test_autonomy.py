@@ -187,3 +187,56 @@ def test_an_earned_layout_with_a_confident_statement_is_not_sent_to_the_owner(tm
     got, _ = _upload(tmp_path, autonomy_threshold=0)
     assert got["extraction"]["routing"]["required"] is False
     assert got["extraction"]["routing"]["reason"] == "earned_and_high"
+
+
+# --- 11.4 the agent approves golden snapshots ---------------------------------------------------
+
+def _golden_after_upload(tmp_path, reprocess=False, **overrides):
+    from tests.helpers import SBI_PDF
+    settings = Settings.from_env(data_dir=tmp_path / "data", committed_templates_dir=COMMITTED_TEMPLATES, **overrides)
+    with TestClient(create_app(settings, learning_mode="thread")) as client:
+        with open(SBI_PDF, "rb") as f:
+            doc_id = client.post("/api/documents", files={"file": ("s.pdf", f, "application/pdf")}).json()["document_id"]
+
+        def golden(wait_for=None):
+            for _ in range(300):               # up to 30 s: the approval re-extracts the statement
+                g = client.get(f"/api/documents/{doc_id}/golden").json()["golden"]
+                status = client.get(f"/api/documents/{doc_id}").json()["document"]["status"]
+                if status not in ("RECEIVED", "PROCESSING") and (wait_for is None or g is not None):
+                    return g
+                time.sleep(0.1)
+            return g
+        first = golden(wait_for=True if overrides.get("autonomy") else None)
+        if not reprocess:
+            return first
+        client.post(f"/api/documents/{doc_id}/reprocess")
+        time.sleep(0.5)
+        return first, golden(), client.get(f"/api/documents/{doc_id}").json()["extraction"]["id"]
+
+
+def test_the_agent_never_approves_while_autonomy_is_off(tmp_path):
+    assert _golden_after_upload(tmp_path, autonomy_threshold=0) is None
+
+
+def test_with_autonomy_on_an_earned_confident_statement_becomes_golden_approved_by_the_agent(tmp_path):
+    g = _golden_after_upload(tmp_path, autonomy_threshold=0, autonomy=True)
+    assert g is not None and g["approved_by"] == "agent" and g["version"] == 1
+
+
+def test_the_agent_never_approves_a_second_version(tmp_path):
+    first, again, _ = _golden_after_upload(tmp_path, reprocess=True, autonomy_threshold=0, autonomy=True)
+    assert first["version"] == 1 and again["version"] == 1           # only the owner approves a new version
+
+
+def test_the_agent_does_not_approve_what_the_owner_must_review(tmp_path):
+    assert _golden_after_upload(tmp_path, autonomy=True) is None      # threshold 10: the layout has not earned it
+
+
+def test_agent_approvals_do_not_count_in_the_track_record(tmp_path):
+    h = History(tmp_path)
+    doc = h.statement("unreviewed")
+    ex = h.db.latest_extraction(doc)["id"]
+    h.db.add_golden(doc, ex, {}, "known_template", f"{LAYOUT}/v1", "pypdfium2", None, "PASS", [], "none",
+                    approved_by="agent")
+    r = _record(h)
+    assert r["matched"] == 0 and r["unreviewed"] == 1

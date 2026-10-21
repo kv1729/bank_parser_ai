@@ -22,7 +22,7 @@ from bank_parser.config import Settings
 from bank_parser.extraction.detection import detection_text
 from bank_parser.extraction.engine import extract_with_template
 from bank_parser.extraction.select import extract_known
-from bank_parser.golden import golden_gate
+from bank_parser.golden import GoldenError, check_agent_approvable, golden_gate
 from bank_parser.extraction.unknown import STRATEGY as UNKNOWN_STRATEGY, extract_unknown
 from bank_parser.learning import LearningBudget, RegressionDoc, TemplateAgent
 from bank_parser.learning.examples import ExamplesProposer
@@ -182,7 +182,9 @@ class Processor:
                 template, result, report = best
                 self._persist(document_id, "known_template", "template", template.template_id, result, report,
                               {"classify_ms": _ms(t0, t_classify), "detect_ms": _ms(t_classify, t_detect)}, cls)
-                return self._finish(document_id, report, result)
+                status = self._finish(document_id, report, result)
+                self._agent_approve(document_id)
+                return status
 
             # Unknown layout (or every matching template failed): extract now, then learn in the
             # background. Learning starts only after this result is stored, so a re-extraction with
@@ -227,6 +229,23 @@ class Processor:
                                    review.get("confidence"), bool(report_d.get("verified")) and not problems)
         self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
                                problems, dict(result.timings_ms, **timings), review, routing)
+
+    def _agent_approve(self, document_id):
+        """Stage 11.4 (D-029): with autonomy on, a statement that does not need the owner (routing)
+        becomes golden, approved by the agent. Never fails the extraction; logs codes only."""
+        if not self.settings.autonomy:
+            return None
+        ex = self.db.latest_extraction(document_id)
+        if not ex or (ex.get("routing") or {}).get("required", True):
+            return None
+        try:
+            kwargs = check_agent_approvable(self.db, self.settings, self.registry.all(), document_id, ex["id"])
+            return self.db.add_golden(document_id, **kwargs, approved_by="agent")
+        except GoldenError as e:
+            log.info("agent approval skipped: %s", e.code)
+        except Exception as e:                       # never echo exception text: it may contain content
+            log.warning("agent approval failed (%s)", type(e).__name__)
+        return None
 
     def _finish(self, document_id, report, result):
         ok = report.verified and not result.problems
@@ -285,6 +304,7 @@ class Processor:
                 report = validate_statement(result.statement)
                 self._persist(document_id, "known_template", "template", template_id, result, report, {})
                 self._finish(document_id, report, result)
+                self._agent_approve(document_id)
             except Exception as e:                   # never echo exception text: it may contain content
                 log.exception("re-extraction failed for document %s", document_id[:12])
                 self._stop_learning(document_id, f"re-extraction with the learned template failed: {type(e).__name__}")

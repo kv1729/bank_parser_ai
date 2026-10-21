@@ -45,9 +45,10 @@ class Settings:
     llm_model: str = "qwen3.5:9b"
     llm_url: str = "http://127.0.0.1:11434"
     llm_max_tokens: int = 4000
-    # Proposers the template agent tries, in order: "heuristic,llm" (default) or "llm" alone
-    # (evaluation: shows what the local model learns without the rules).
-    learning_proposers: tuple = ("heuristic", "llm")
+    # Proposers the template agent tries, in order: "heuristic,examples,llm" (default) or "llm" alone
+    # (evaluation: shows what the local model learns without the rules). "examples": tables the
+    # owner approved label new ones without the model (D-027).
+    learning_proposers: tuple = ("heuristic", "examples", "llm")
     upload_chunk_bytes: int = 1024 * 1024
     max_upload_bytes: int | None = None     # None = no limit (infrastructure guard only)
 
@@ -84,7 +85,7 @@ class Settings:
             llm_url=os.environ.get("BANK_PARSER_LLM_URL", "http://127.0.0.1:11434"),
             llm_max_tokens=_int("BANK_PARSER_LLM_MAX_TOKENS", 4000),
             learning_proposers=tuple(p.strip() for p in os.environ.get("BANK_PARSER_LEARNING_PROPOSERS",
-                                                                       "heuristic,llm").split(",") if p.strip()),
+                                                                       "heuristic,examples,llm").split(",") if p.strip()),
             upload_chunk_bytes=_int("BANK_PARSER_UPLOAD_CHUNK_BYTES", 1024 * 1024),
             max_upload_bytes=_int("BANK_PARSER_MAX_UPLOAD_BYTES", None),
         )

@@ -141,8 +141,11 @@ class LLMProposer(Proposer):
     name = "llm"
     uses_llm = True
 
-    def __init__(self, client=None, model=None):
+    def __init__(self, client=None, model=None, examples=()):
         self.client, self.model = client, model
+        # Approved table_roles examples shown as few-shot. Off in the app: they made the model worse on
+        # tables with little heading text (D-027); kept for experiments/examples_holdout.py.
+        self.examples = list(examples)
         self._available = None
 
     def available(self):
@@ -154,7 +157,9 @@ class LLMProposer(Proposer):
         if ctx.llm_tokens_left <= 0:
             ctx.notes.append("llm: token budget spent")
             return None
-        prompt = llm_view.build_prompt(view) + (f"\n\n{note}" if note else "")
+        from bank_parser.learning.examples import few_shot, nearest     # examples imports this module
+        shown = few_shot(nearest(self.examples, view)) if self.examples else ""
+        prompt = llm_view.build_prompt(view, shown) + (f"\n\n{note}" if note else "")
         try:
             reply = self.client.chat_json(self.model, llm_view.SYSTEM, prompt, llm_view.answer_schema(view))
         except LLMError as e:
@@ -167,7 +172,8 @@ class LLMProposer(Proposer):
         except llm_view.AnswerError as e:
             ctx.notes.append(f"llm: {e}")
             return None
-        return template_for(ctx, layout.spec, self.name, {"model": self.model, "role_source": "llm"})
+        extra = {"examples_shown": len(shown.splitlines())} if shown else {}
+        return template_for(ctx, layout.spec, self.name, {"model": self.model, "role_source": "llm", **extra})
 
     def propose(self, ctx):
         try:

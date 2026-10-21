@@ -14,6 +14,8 @@ Confidence per field:
   low      a check questioned it
   missing  not extracted
 """
+import re
+
 from bank_parser.extraction.generic_rules import GENERIC_HEADER_RULES
 
 HEADER_FIELDS = ("bank_name", "account_holder_name", "account_holder_address", "account_number", "ifsc",
@@ -36,11 +38,12 @@ TEXT_PROBLEMS = {"text_not_captured": "text inside the table belongs to no row (
                  "description_start_at_end": "the description ends with words that usually start one; "
                                              "the next row's first line may have moved here",
                  "label_in_value": "an account value contains a label word; it may include the wrong text"}
-PROPOSERS = {"heuristic": "rules", "llm": "the local AI model"}
+PROPOSERS = {"heuristic": "rules", "llm": "the local AI model", "examples": "tables you approved before"}
 ROLE_SOURCES = {"header_text": "from the ruled table's heading words", "content": "from the columns' content",
                 "content+chain": "from content, debit/credit decided by the balance chain",
                 "heading_words": "from familiar heading words (no ruled lines)",
-                "llm": "by the local AI model (no ruled lines)"}
+                "llm": "by the local AI model (no ruled lines)",
+                "examples": "from the headings of tables you approved before (no model)"}
 
 
 def _checks(report):
@@ -268,3 +271,67 @@ def calibration(self_review, review):
             "rows_marked_wrong_not_flagged": sorted(r for r in rows_wrong if f"txn.{r}" not in flagged_rows),
             "money_rated_high": money_high,
             "feedback": len(review.get("agent_feedback") or {})}
+
+
+# --- the owner's earlier feedback on this layout (Stage 10.7, D-027) ---------------------------
+
+_ROW_NO = re.compile(r":\d+(?=:|$)")
+
+
+def item_kind(item_id):
+    """A self-review item id without its row number ("row:12:money" -> "row:*:money")."""
+    return _ROW_NO.sub(":*", item_id)
+
+
+def _field_name(key):
+    return key.split(".", 1)[-1].replace("_", " ")
+
+
+def apply_history(self_review, history, extraction_id=None):
+    """
+    Adjust a self-review with the owner's earlier feedback on the same layout
+    (`Database.example_history`): a field the owner marked wrong or missing is not rated
+    "high" and is listed to check; marked rows are mentioned; a worry the owner called not
+    useful more often than useful (twice or more) is muted and listed last. Feedback on this
+    extraction itself (`extraction_id`) is left out. Returns the self-review (changed in place).
+    """
+    if not self_review or not history:
+        return self_review
+    history = [h for h in history if extraction_id is None or h.get("extraction_id") != extraction_id]
+    fields, unsure = self_review.get("fields", {}), self_review.setdefault("unsure", [])
+    corrected, rows = {}, 0
+    for h in history:
+        if h["kind"] == "field_correction":
+            for key in list(h.get("wrong", [])) + list(h.get("missing", [])):
+                corrected[key] = corrected.get(key, 0) + 1
+            rows += h.get("rows_marked", 0)
+    for key, n in sorted(corrected.items()):
+        f = fields.get(key)
+        if f is not None:
+            if f["level"] == "high":
+                f["level"] = "medium"
+            f["reason"] += f"; you corrected it on this layout before ({n}x)"
+        _item(unsure, f"history:{key}", key,
+              f"{_field_name(key).capitalize()}: you corrected it on an earlier statement of this layout ({n}x); check it.")
+    if rows:
+        _item(unsure, "history:rows", "transactions",
+              f"You marked {rows} row(s) wrong on earlier statements of this layout; check the transactions.")
+    votes = {}
+    for h in history:
+        if h["kind"] == "verdict":
+            v = votes.setdefault(h["item"], {"agree": 0, "disagree": 0})
+            v[h["verdict"]] += 1
+    for u in unsure:
+        v = votes.get(item_kind(u["id"]))
+        if v:
+            u["owner_votes"] = v
+            if v["disagree"] >= 2 and v["disagree"] > v["agree"]:
+                u["muted"] = True
+                u["text"] += " (You said this worry was not useful before.)"
+    unsure.sort(key=lambda u: bool(u.get("muted")))       # stable: muted ones last
+    things = sum(1 for u in unsure if not u.get("muted"))
+    self_review["summary"] = (self_review["summary"].rsplit(";", 1)[0]
+                              + f"; {things} thing{'s' if things != 1 else ''} to check.")
+    self_review["history"] = {"corrections": sum(1 for h in history if h["kind"] == "field_correction"),
+                              "verdicts": sum(1 for h in history if h["kind"] == "verdict")}
+    return self_review

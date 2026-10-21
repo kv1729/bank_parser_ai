@@ -2,7 +2,7 @@
 
 Progress tracker for this project (global rule 2). One stage at a time. Each stage has a goal, deliverables and exit criteria. Decisions made inside a stage go to `docs/DECISIONS.md`, not here.
 
-**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) 10.4 (self-review), 10.5 (text checks) and 10.6 (US formats) are done (D-023 – D-026). **Next:** 10.7, the owner's feedback as training examples. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: the first feedback the agent gets. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
+**Now:** Stage 10 (local AI agent), in progress since 2026-10-14. 10.1 (model choice: `qwen3.5:9b`), 10.2 (AI template proposer) and 10.3 (`LEARNING`, then the checked result) 10.4 (self-review), 10.5 (text checks), 10.6 (US formats) and 10.7 (feedback as training examples) are done (D-023 – D-027). **Next:** 10.8, held-out evaluation. **Owner:** read the self-review of statements 1–3 in `/review` and mark Agree/Disagree: each verdict is now stored as an example. Stage 7 continues with more statements. How far from the goal: see `CHECKPOINT.md`.
 
 | # | Stage | Status | Started | Finished |
 |---|---|---|---|---|
@@ -178,7 +178,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - [x] **10.5 Text checks** (D-025): lost text, rows without a description, a description ending with the start of the next row, label words inside account values. Warnings on every extraction, fed into the self-review. No false alarms on the 8 known-correct statements; the D-018 failure and lost lines are caught.
   - [x] **10.4 Agent self-review** (D-024): for every extraction, what was checked, what is unsure (with ids), a confidence per field (high / medium / low / missing, with the reason) and how the template was made. Deterministic, never values. Shown in `/review` with Agree/Disagree and a note per item, plus a calibration line comparing the owner's marks with the ratings.
   - [x] **10.6 US formats** (D-026): month-first, month-name and year-less dates (year from the period), trailing-minus amounts, routing number with the ABA checksum, US header labels, signed amount columns. Two synthetic US statements are read exactly as printed; India unchanged (`regress`, 10.1 check, full suite).
-  - [ ] Human flags and approvals stored as training examples for the agent.
+  - [x] **10.7 Feedback as training examples** (D-027): approvals, review marks and Agree/Disagree stored as examples (no values). Approved headings label new tables without the model (8/10 instead of 6/10, no wrong labelling), corrected fields are not rated high again until re-approved, and repeatedly unhelpful worries are muted. Few-shot examples for the model were tried and dropped (they hurt tables with little heading text).
   - [ ] Evaluation on held-out statements: success rate, time, re-tries.
 - **Sub-steps:**
   - 10.1 model choice ✅
@@ -187,7 +187,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
   - 10.4 agent self-review ✅
   - 10.5 text checks ✅
   - 10.6 US formats ✅
-  - 10.7 feedback as training examples
+  - 10.7 feedback as training examples ✅
   - 10.8 held-out evaluation
 - **Exit criteria:** Each statement that fails today's recipes (e.g. the `Sr No` layout, before its rule-based fix) is extracted and verified by the agent alone, and the golden set stays identical.
 - **Privacy:** The agent may see full content only because it is local. Claude (the development assistant) still sees only masked or aggregate output (global rule 3).

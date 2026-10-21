@@ -57,6 +57,14 @@ Columns:
 ```"""
 
 
+EXAMPLES = """
+
+Tables the owner approved on earlier statements (headings and roles only; other banks may word them differently):
+```
+{examples}
+```"""
+
+
 class AnswerError(ValueError):
     """No usable table, or a labelling that cannot describe one (reported as the reason)."""
 
@@ -237,12 +245,14 @@ def word_roles(view):
     return None
 
 
-def build_prompt(view):
+def build_prompt(view, examples=""):
+    """`examples`: tables approved on earlier statements as "heading -> role" lines (D-027)."""
     rows = []
     for k, (h, vals) in enumerate(zip(view.headings, view.samples), 1):
         shown = ", ".join(f'"{v}"' for v in vals) or "(empty)"
         rows.append(f'C{k} heading "{h}" | values: {shown}')
-    return PROMPT.format(n=len(view.headings), columns="\n".join(rows))
+    prompt = PROMPT.format(n=len(view.headings), columns="\n".join(rows))
+    return prompt + EXAMPLES.format(examples=examples) if examples else prompt
 
 
 def answer_schema(view):

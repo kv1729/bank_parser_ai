@@ -663,3 +663,31 @@ The review screen will show that review beside the output. The owner gives feedb
   - the text checks clean on all 8 known-correct statements;
   - the full suite passes (246).
 - **Not in this step (new Stage 16):** US statements split into separate Deposits / Withdrawals / Checks sections, often with no running balance (e.g. Chase); this needs multi-table reading. US identifiers in the privacy gate stay in Stage 12 (H5).
+
+## D-027 — The owner's feedback as training examples (Stage 10.7, CHECKPOINT D7)
+
+- **Date:** 2026-10-21
+- **Owner:** approved the plan; chose to drop few-shot (option 1) after experiment 2.
+- **Problem:** the owner approves golden statements, marks wrong or missing fields and rows, and gives Agree/Disagree on the self-review, but the agent learned from none of it. A table whose wording the owner had already approved still needed the model (~12 s), and the self-review rated a field "high" again after the owner had corrected it.
+- **Decision:**
+  - **Example store:** new append-only table `training_examples` (additive). Kinds:
+    - `approval` (a golden approval);
+    - `table_roles` (the approved table's heading words per column and the template's roles, matched by column overlap);
+    - `field_correction` (field keys marked wrong or missing, and how many rows);
+    - `verdict` (Agree/Disagree per self-review item, row numbers removed; the note is never used).
+  - **Never values:** headings with digits or more than 5 words are stored as "". Re-recording the same example is a no-op.
+  - **Written by:** the golden approval and the review save (a failure never fails them), and by `scripts/build_examples.py` for earlier approvals and reviews (idempotent; prints counts only).
+  - **Ordered by when it happened** (`occurred_at`: the review's save time, the approval time), not when it was recorded. The first backfill recorded two corrections from before their layouts' approvals after those approvals; ordering by record time would have kept ICICI and BOI fields capped. Now no golden layout has an open correction (checked).
+  - **Learned headings (`ExamplesProposer`, after the heuristic, before the model):** a heading that always had one role in approved examples labels its column; familiar heading words fill in the rest. It is used only when it names a column the familiar words cannot. Its candidate passes the same checks and gates as any other.
+  - **Calibration (`self_review.apply_history`):** on the same layout (any version), a field the owner corrected is rated at most "medium" and listed to check, until the layout is approved again. Marked rows are mentioned. A worry the owner called not useful twice or more (and more often than useful) is muted and listed last. Feedback on the extraction itself is left out.
+  - **Few-shot for the model: dropped.** The code stays (`LLMProposer(examples=...)`, `build_prompt(view, examples)`) for the experiment only; the app does not pass examples.
+- **Evidence** (`experiments/examples_holdout.py`, leave-one-out over the 10 Stage 10.1 cases; the examples come from the other 9):
+  - **Examples recorded:** 10/10, with the approved template's roles each time.
+  - **Labelled with no model call:** 8/10 (familiar words alone: 6/10). The two added are tables whose wording was approved on another statement. **No wrong labelling passed the checks.** The two left (SBI layouts with almost no heading text) still go to the model.
+  - **Few-shot, qwen3.5:9b:** without examples 8/10, with examples 7/10; tokens 4616 vs 6737; 597.3 s vs 783.1 s in all. Neither let a wrong labelling pass.
+    - Without examples, 8/10 here: one call failed with a server error, and the SBI copy needs the debit/credit swap that the agent makes and this experiment does not (10.1 scored it after the swap).
+    - With examples, two more were rejected: the golden SBI statement and the synthetic HDFC one.
+    - Cause: the nearest examples were chosen by shared heading words. A table with almost no heading text ("Balance" only) still matched other banks' tables, and the model copied their column order.
+    - The model already reads every case without examples, so there was nothing to gain. A fix (show examples only when most columns have headings that overlap) would need a third experiment (PLAN §6).
+  - One model call failed with an HTTP error (model loading); it is unrelated to the examples and is followed up in 10.8.
+- **Golden:** `regress` 3 x PASS. Self-reviews are not part of the golden snapshot.

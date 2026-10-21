@@ -4,6 +4,7 @@ SQLite persistence (stdlib sqlite3, WAL mode).
 Statement JSON is stored per extraction; it contains personal data, so the
 database lives in the gitignored data directory. Passwords are never stored.
 """
+import hashlib
 import json
 import sqlite3
 import threading
@@ -79,7 +80,26 @@ CREATE TABLE IF NOT EXISTS golden_snapshots (
     approved_at       TEXT NOT NULL,
     UNIQUE (document_id, version)
 );
+-- Training examples (Stage 10.7, D-027): the owner's approvals and corrections in a form the
+-- template agent and the self-review use. Append-only; never statement values, only heading
+-- words, roles, field names, counts and verdicts. `example_key` makes re-recording a no-op.
+CREATE TABLE IF NOT EXISTS training_examples (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind          TEXT NOT NULL,               -- approval | table_roles | field_correction | verdict
+    document_id   TEXT NOT NULL REFERENCES documents(id),
+    template_id   TEXT,
+    source        TEXT NOT NULL,               -- golden | review
+    payload_json  TEXT NOT NULL,
+    example_key   TEXT NOT NULL UNIQUE,
+    created_at    TEXT NOT NULL,
+    occurred_at   TEXT                         -- when the approval or review happened (orders feedback)
+);
 """
+
+
+def layout_of(template_id):
+    """'boi/layout-23f4f42a/v3' -> 'boi/layout-23f4f42a': feedback applies to every version of a layout."""
+    return template_id.rsplit("/", 1)[0] if template_id and template_id.count("/") >= 2 else template_id
 
 
 def utcnow():
@@ -101,6 +121,8 @@ class Database:
                 c.execute("ALTER TABLE reviews ADD COLUMN agent_feedback_json TEXT")
             if "self_review_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
                 c.execute("ALTER TABLE extractions ADD COLUMN self_review_json TEXT")
+            if "occurred_at" not in {r["name"] for r in c.execute("PRAGMA table_info(training_examples)")}:
+                c.execute("ALTER TABLE training_examples ADD COLUMN occurred_at TEXT")
 
     @contextmanager
     def connect(self):
@@ -314,6 +336,61 @@ class Database:
     def golden_versions(self):
         """{document_id: active golden version} for the review list."""
         return {g["document_id"]: g["version"] for g in self.active_goldens()}
+
+    # --- training examples (Stage 10.7, D-027) ------------------------------------------
+    def add_example(self, kind, document_id, template_id, source, payload, occurred_at=None):
+        """Record one example; the same (kind, document, template, source, payload) again is a no-op,
+        except that a missing `occurred_at` is filled in. Returns True when a new row was added.
+        `occurred_at`: when the approval or review happened (default now); feedback is ordered by it."""
+        body = json.dumps(payload, sort_keys=True)
+        key = hashlib.sha256("|".join((kind, document_id, template_id or "", source, body)).encode()).hexdigest()
+        now = utcnow()
+        with self.connect() as c:
+            if c.execute("SELECT 1 FROM training_examples WHERE example_key = ?", (key,)).fetchone():
+                c.execute("UPDATE training_examples SET occurred_at = ? WHERE example_key = ? AND occurred_at IS NULL",
+                          (occurred_at or now, key))
+                return False
+            c.execute("""INSERT OR IGNORE INTO training_examples(kind, document_id, template_id, source, payload_json,
+                         example_key, created_at, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                      (kind, document_id, template_id, source, body, key, now, occurred_at or now))
+            return True
+
+    def examples(self, kind=None):
+        with self.connect() as c:
+            rows = c.execute("SELECT * FROM training_examples" + (" WHERE kind = ?" if kind else "") + " ORDER BY id",
+                             (kind,) if kind else ()).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["payload"] = json.loads(d.pop("payload_json"))
+            d.pop("example_key")
+            out.append(d)
+        return out
+
+    def example_counts(self):
+        with self.connect() as c:
+            return {r[0]: r[1] for r in c.execute("SELECT kind, COUNT(*) FROM training_examples GROUP BY kind")}
+
+    def example_history(self, template_id):
+        """The owner's earlier feedback on this template's layout (any version), for the self-review:
+        corrections made since the layout's latest golden approval, and every verdict."""
+        layout = layout_of(template_id)
+        if not layout:
+            return None
+        # Ordered by when the approval or review happened (a backfill records old events late);
+        # same second: by the order they were recorded.
+        when = "COALESCE(occurred_at, created_at)"
+        with self.connect() as c:
+            last = c.execute(f"""SELECT {when} AS t, id FROM training_examples WHERE kind = 'approval'
+                                 AND (template_id = ? OR template_id LIKE ?) ORDER BY t DESC, id DESC LIMIT 1""",
+                             (layout, layout + "/%")).fetchone()
+            t, i = (last["t"], last["id"]) if last else ("", 0)
+            rows = c.execute(f"""SELECT kind, payload_json FROM training_examples
+                                 WHERE kind IN ('field_correction', 'verdict') AND (template_id = ? OR template_id LIKE ?)
+                                 AND (kind = 'verdict' OR {when} > ? OR ({when} = ? AND id > ?))
+                                 ORDER BY {when}, id""",
+                             (layout, layout + "/%", t, t, i)).fetchall()
+        return [{"kind": r["kind"], **json.loads(r["payload_json"])} for r in rows]
 
     def review_counts(self):
         """{document_id: number of outputs marked wrong or missing} for each document's latest review."""

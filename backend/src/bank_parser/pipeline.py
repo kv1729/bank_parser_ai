@@ -24,6 +24,7 @@ from bank_parser.extraction.select import extract_known
 from bank_parser.golden import golden_gate
 from bank_parser.extraction.unknown import STRATEGY as UNKNOWN_STRATEGY, extract_unknown
 from bank_parser.learning import LearningBudget, RegressionDoc, TemplateAgent
+from bank_parser.learning.examples import ExamplesProposer
 from bank_parser.learning.proposers import HeuristicProposer, LLMProposer
 from bank_parser.llm.ollama import OllamaClient
 from bank_parser.pdf import MalformedPdf, PasswordRequired, PdfKind, classify, open_pdf
@@ -31,7 +32,7 @@ from bank_parser.core.schema import statement_to_dict
 from bank_parser.storage import Database, DocumentStore
 from bank_parser.templates import TemplateRegistry
 from bank_parser.core.validation import report_to_dict, validate_statement
-from bank_parser.self_review import build_self_review
+from bank_parser.self_review import apply_history, build_self_review
 from bank_parser.core.text_checks import text_check, with_text_check
 
 log = logging.getLogger("bank_parser")   # never log statement content, names or numbers
@@ -81,11 +82,16 @@ def run_learning_job(settings, job_id, document_id, path, password):
                                 max_seconds=settings.learning_max_seconds,
                                 max_llm_tokens=settings.llm_max_tokens)
         # The heuristic proposer goes first; the local model is asked only when it fails (D-023).
+        # Tables the owner approved label new ones before the model is asked (D-027).
+        examples = db.examples("table_roles")
         proposers = []
         for name in settings.learning_proposers:
             if name == "heuristic":
                 proposers.append(HeuristicProposer())
+            elif name == "examples":
+                proposers.append(ExamplesProposer(examples))
             elif name == "llm" and settings.llm_max_tokens > 0:
+                # No few-shot examples: they made the model worse on tables with little heading text (D-027).
                 proposers.append(LLMProposer(OllamaClient(settings.llm_url), settings.llm_model))
             elif name != "llm":
                 raise ValueError(f"unknown learning proposer {name!r}")
@@ -213,6 +219,8 @@ class Processor:
         if job and job.get("template_id") != template_id:
             job = None                  # this document's job did not make this template
         review = build_self_review(data, report_d, result.field_sources, template, job)
+        # The owner's earlier corrections on this layout (D-027).
+        review = apply_history(review, self.db.example_history(template_id))
         self.db.add_extraction(document_id, workflow, strategy, template_id, report_d, data,
                                problems, dict(result.timings_ms, **timings), review)
 

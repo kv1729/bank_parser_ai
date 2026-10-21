@@ -396,7 +396,7 @@ function selfReviewBox(sr, cal) {
     box.append(el("h3", "What I'm unsure of — do you agree?"));
     const ul = el("ul");
     for (const u of sr.unsure) {
-      const li = el("li", u.text);
+      const li = el("li", u.text, u.muted ? "muted" : null);   // muted: you called this worry not useful before (D-027)
       const v = el("span", null, "verdict");
       const fb = () => current.feedback[u.id] || null;
       const btns = {};
@@ -434,6 +434,12 @@ function selfReviewBox(sr, cal) {
     if (cal.rows_marked_wrong_not_flagged.length) bits.push(`${cal.rows_marked_wrong_not_flagged.length} row(s) you marked wrong were not among the things I was unsure of`);
     box.append(el("div", bits.length ? "Calibration: " + bits.join("; ") + "." : "Calibration: nothing you marked wrong was rated high.", bits.length ? "" : "muted"));
   }
+  // Training examples (Stage 10.7, D-027): what the agent has learned from your reviews.
+  const learned = el("div", null, "muted");
+  box.append(learned);
+  fetch("/api/training-examples/summary").then(r => r.ok ? r.json() : null).then(s => {
+    if (s) learned.textContent = `${s.total} example(s) learned from your approvals and reviews.`;
+  }).catch(() => {});
   return box;
 }
 

@@ -14,12 +14,13 @@ from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from bank_parser.config import Settings
-from bank_parser.golden import GoldenError, check_approvable, diff, snapshot
+from bank_parser.golden import GoldenError, check_approvable, diff, password_candidates, snapshot
 from bank_parser.pdf import MalformedPdf, PasswordRequired, open_pdf
 from bank_parser.pdf.render import render_page_png
 from bank_parser.pipeline import DocStatus, Processor
 from bank_parser.review import PasswordVault, ReviewError, ReviewSources, SourceDir, validate_agent_feedback, validate_review
-from bank_parser.self_review import build_self_review, calibration
+from bank_parser.learning.examples import record_golden_file, record_review
+from bank_parser.self_review import apply_history, build_self_review, calibration
 from bank_parser.storage import UploadTooLarge
 from bank_parser.templates import template_to_dict
 
@@ -99,7 +100,8 @@ def create_app(settings=None, learning_mode="process"):
             job = p.db.latest_template_job(ex["document_id"])
             if job and job.get("template_id") != ex.get("template_id"):
                 job = None              # this document's job did not make this template
-            ex["self_review"] = build_self_review(ex["statement"], ex["report"], None, template, job)
+            ex["self_review"] = apply_history(build_self_review(ex["statement"], ex["report"], None, template, job),
+                                              p.db.example_history(ex.get("template_id")), ex["id"])
         return ex
 
     @app.get("/api/documents/{document_id}")
@@ -233,7 +235,17 @@ def create_app(settings=None, learning_mode="process"):
                 feedback = validate_agent_feedback(body["agent_feedback"], {i["id"] for i in items})
         except ReviewError as e:
             raise HTTPException(400, str(e))
-        return p.db.save_review(document_id, ex["id"], flags, remarks, missing, feedback)
+        saved = p.db.save_review(document_id, ex["id"], flags, remarks, missing, feedback)
+        # Training examples (D-027): what was marked, and the verdicts; never fails the save.
+        record_review(p.db, document_id, ex["id"], ex.get("template_id"), saved["flags"], saved["missing"],
+                      saved["agent_feedback"], with_self_review(ex).get("self_review"), saved["updated_at"])
+        return saved
+
+    @app.get("/api/training-examples/summary")
+    def training_examples_summary():
+        """How many examples the agent has learned from the owner (counts only)."""
+        counts = proc().db.example_counts()
+        return {"total": sum(counts.values()), "by_kind": counts}
 
     # --- golden statements (Stage 9, D-022) ---------------------------------------------------
 
@@ -267,7 +279,16 @@ def create_app(settings=None, learning_mode="process"):
                                       acknowledge_warnings=body.get("acknowledge_warnings") is True)
         except GoldenError as e:
             raise HTTPException(409, {"code": e.code, "message": str(e), **e.details})
-        return {"golden": golden_info(p.db.add_golden(document_id, **kwargs))}
+        golden = p.db.add_golden(document_id, **kwargs)
+        learn_from_golden(p, document_id, golden)
+        return {"golden": golden_info(golden)}
+
+    def learn_from_golden(p, document_id, golden):
+        """Training examples from an approval (D-027). Never fails the approval."""
+        template = p.registry.get(golden["template_id"]) if golden.get("template_id") else None
+        known = [pw for pw in (vault.get(document_id),) if pw]
+        return record_golden_file(p.db, p.store.path_for(document_id), golden, template,
+                                  known + list(password_candidates(settings)), settings.pdf_backend)
 
     return app
 

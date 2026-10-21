@@ -203,7 +203,7 @@ Progress tracker for this project (global rule 2). One stage at a time. Each sta
 - **Started:** 2026-10-21, on branch `stage-11-autonomy`, one commit per step.
 - **Steps:**
   - [x] **11.1 Track record per layout** (E1): `autonomy.track_record`. Each statement is matched, corrected or unreviewed by the owner's reviews and owner goldens; the run is the matches since the last correction; a layout has earned autonomy at run ≥ `BANK_PARSER_AUTONOMY_THRESHOLD` (default 10). `GET /api/autonomy`.
-  - [ ] 11.2 Confidence per statement
+  - [x] **11.2 Confidence per statement** (E3): `self_review.with_confidence` rates the whole statement high / medium / low with reason codes. Worries that are the same on every statement of a layout (text fields read from a position, columns named by the model) are left to the layout's track record instead of lowering it. All 8 known-correct statements are high; a broken balance is low; an earlier correction on the layout makes it medium. Shown in `/review`.
   - [ ] 11.3 Routing: only low confidence or unearned layouts ask the owner
   - [ ] 11.4 The agent approves golden snapshots (off until the owner switches it on)
   - [ ] 11.5 Drift detection

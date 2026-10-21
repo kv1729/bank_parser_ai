@@ -382,6 +382,13 @@ function confTag(key) {
 function selfReviewBox(sr, cal) {
   const box = el("div", null, "selfrev");
   box.append(el("strong", "Agent's self-review"), el("span", "  " + sr.summary, "muted"));
+  if (sr.confidence) {               // confidence in the whole statement (Stage 11.2, D-029)
+    const c = sr.confidence;
+    const pill = el("span", "Confidence: " + c.level, "conf " + c.level);
+    pill.title = c.reasons.length ? "Why not high: " + c.reasons.join(", ") : "Nothing lowers it"
+      + (c.covered_by_track_record && c.covered_by_track_record.length ? "; left to the layout's track record: " + c.covered_by_track_record.join(", ") : "");
+    box.append(" ", pill);
+  }
   const L = sr.learning;
   if (L && L.template) {
     const how = L.proposer ? `learned by ${L.proposer}` + (L.columns ? `, columns named ${L.columns}` : "") + (L.model ? ` (${L.model})` : "")

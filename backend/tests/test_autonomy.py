@@ -83,3 +83,63 @@ def test_autonomy_api_reports_counts_only(tmp_path):
     with TestClient(create_app(settings, learning_mode="thread")) as client:
         got = client.get("/api/autonomy").json()
     assert got == {"threshold": 4, "enabled": False, "layouts": []}
+
+
+# --- 11.2 confidence per statement ------------------------------------------------------------
+
+def _sbi():
+    from bank_parser.core.schema import statement_to_dict
+    from bank_parser.core.validation import report_to_dict, validate_statement
+    from bank_parser.extraction.engine import extract_with_template
+    from bank_parser.pdf import open_pdf
+    from bank_parser.templates import TemplateRegistry
+    from tests.helpers import SBI_PDF
+    t = next(t for t in TemplateRegistry([COMMITTED_TEMPLATES]).all() if t.template_id.startswith("sbi"))
+    with open_pdf(SBI_PDF) as doc:
+        res = extract_with_template(doc, t)
+    return t, res, statement_to_dict(res.statement), report_to_dict(validate_statement(res.statement))
+
+
+def test_a_verified_statement_is_high_and_says_what_its_layout_record_covers():
+    from bank_parser.self_review import build_self_review
+    t, res, st, report = _sbi()
+    c = build_self_review(st, report, res.field_sources, t)["confidence"]
+    assert c["level"] == "high" and c["reasons"] == []
+    assert all(k.startswith(("field:", "learning:")) for k in c["covered_by_track_record"])
+
+
+def test_a_broken_balance_is_low_and_says_why():
+    from bank_parser.core.schema import statement_from_dict
+    from bank_parser.core.validation import report_to_dict, validate_statement
+    from bank_parser.self_review import build_self_review
+    t, res, st, _ = _sbi()
+    st["transactions"][3]["balance"] = "1.00"
+    report = report_to_dict(validate_statement(statement_from_dict(st)))
+    c = build_self_review(st, report, res.field_sources, t)["confidence"]
+    assert c["level"] == "low" and "validation_failed" in c["reasons"] and "low:transactions.balance" in c["reasons"]
+
+
+def test_an_earlier_correction_on_the_layout_makes_it_medium(tmp_path):
+    from bank_parser.learning.examples import record_review
+    from bank_parser.self_review import apply_history, build_self_review
+    t, res, st, report = _sbi()
+    db = Database(tmp_path / "c.db")
+    db.upsert_document("d", "d.pdf", 1)
+    record_review(db, "d", 1, t.template_id, ["header.branch"], [], {}, {})
+    sr = apply_history(build_self_review(st, report, res.field_sources, t), db.example_history(t.template_id))
+    assert sr["confidence"]["level"] == "medium" and "check:history:header.branch" in sr["confidence"]["reasons"]
+
+
+def test_without_a_template_it_is_never_high():
+    from bank_parser.self_review import build_self_review
+    _, res, st, report = _sbi()
+    c = build_self_review(st, report, res.field_sources, None)["confidence"]
+    assert c["level"] == "medium" and "no_template" in c["reasons"]
+
+
+def test_older_self_reviews_get_a_confidence():
+    from bank_parser.self_review import build_self_review, ensure_confidence
+    t, res, st, report = _sbi()
+    sr = build_self_review(st, report, res.field_sources, t)
+    sr.pop("confidence"), sr.pop("basis")
+    assert ensure_confidence(sr, st, report, t)["confidence"]["level"] == "high"

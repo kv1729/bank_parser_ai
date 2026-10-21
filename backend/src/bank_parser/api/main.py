@@ -21,7 +21,7 @@ from bank_parser.pdf.render import render_page_png
 from bank_parser.pipeline import DocStatus, Processor
 from bank_parser.review import PasswordVault, ReviewError, ReviewSources, SourceDir, validate_agent_feedback, validate_review
 from bank_parser.learning.examples import record_golden_file, record_review
-from bank_parser.self_review import apply_history, build_self_review, calibration
+from bank_parser.self_review import apply_history, build_self_review, calibration, ensure_confidence
 from bank_parser.storage import UploadTooLarge
 from bank_parser.templates import template_to_dict
 
@@ -103,6 +103,9 @@ def create_app(settings=None, learning_mode="process"):
                 job = None              # this document's job did not make this template
             ex["self_review"] = apply_history(build_self_review(ex["statement"], ex["report"], None, template, job),
                                               p.db.example_history(ex.get("template_id")), ex["id"])
+        elif ex and ex.get("self_review") is not None:
+            template = proc().registry.get(ex["template_id"]) if ex.get("template_id") else None
+            ensure_confidence(ex["self_review"], ex["statement"], ex["report"], template)
         return ex
 
     @app.get("/api/documents/{document_id}")

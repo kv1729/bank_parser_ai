@@ -691,3 +691,40 @@ The review screen will show that review beside the output. The owner gives feedb
     - The model already reads every case without examples, so there was nothing to gain. A fix (show examples only when most columns have headings that overlap) would need a third experiment (PLAN §6).
   - One model call failed with an HTTP error (model loading); it is unrelated to the examples and is followed up in 10.8.
 - **Golden:** `regress` 3 x PASS. Self-reviews are not part of the golden snapshot.
+
+## D-028 — Held-out evaluation of the agent; Stage 10 exit (Stage 10.8, CHECKPOINT D6, D8)
+
+- **Date:** 2026-10-21
+- **Owner:** approved the plan.
+- **Question:** does the template agent, as the app runs it, learn statements it has never seen correctly, how fast, with how many retries, and does the model alone meet the Stage 10 exit criterion?
+- **Method** (`experiments/agent_eval.py`; scores only; report in `data/exports/agent-eval/`):
+  - **12 held-out cases:**
+    - 3 golden statements;
+    - 3 anonymised copies;
+    - 2 renamed copies (other banks' wording);
+    - 2 synthetic PDFs;
+    - 2 synthetic US statements.
+  - **Held out:** each is learned with an empty template registry (its own template is never available). Approved-heading examples come only from the other cases.
+  - **Correct means:** transactions identical to the known output, and opening/closing balance and period equal.
+  - **Configurations:** **A** is the app's default (rules, approved headings, local model), run twice. **B** is the local model alone, run once.
+  - The layout copies keep word positions but not ruled lines, so the rules take their unruled path there. `TemplateAgent.learn_document` lets the agent run on them.
+  - There is no golden gate inside the evaluation (an empty registry would make it refuse everything). Instead, `regress` passes before and after, and a test (`test_every_proposer_is_refused_by_the_golden_gate`) shows that a candidate from each proposer is refused, and never saved, when the gate refuses.
+- **Results:**
+  - **B, the model alone: 12/12 correct, 0 wrongly accepted.**
+    - **Time:** median 72 s, longest 270 s (the first call loads the model).
+    - **Model:** 12 calls, 5,846 tokens, 1 refinement (the debit/credit swap on the SBI copy), 0 server retries.
+    - **Exit criterion met:** every statement, including the three the rules cannot read without help, is extracted and verified by the agent alone, and the golden set is unchanged.
+  - **A, the app's default: 22/24 correct in the full run, 0 wrongly accepted, the two runs identical.**
+    - **Who read them:** the rules read 18, the approved headings 4, and the model was not needed for any other case. Median 6 s.
+    - **The 2 failures:** both were the SBI copy (almost no heading text, so only the model can label it), and both were caused by the laptop's memory, not by the agent:
+      - **Run 1:** the model server took 5.5 s to answer "which models are installed?" (5 s timeout), so the model proposer counted as unavailable and was skipped without a note.
+      - **Run 2:** the model failed to load twice ("llama-server reported out-of-memory during startup", 0.1 GB free of 15.7 GB), and the retry 3 s later failed the same way.
+    - **Rerun of that case with 5.4 GB free:** 2/2 correct through the model (269 s from cold, 78 s warm).
+- **Changes made because of the run:**
+  - A proposer that is unavailable is always named in the agent's reason.
+  - The model check waits 30 s (not 5) and is retried once on a server failure.
+  - A model call that fails on the server (HTTP 5xx, connection refused or reset; not a timeout, not a bad answer) is retried once after 20 s (`ServerFailure`, `LLMReply.retries`).
+  - The model's calls, retries, failures and tokens are recorded for the whole learning job (`LearningOutcome.model`), not only when a template was tried.
+- **Limits:**
+  - The model needs about 6 GB of free memory. With less it fails to load: the job ends in human review, never with a wrong result. From cold, a call can take about 4.5 minutes, close to the 300 s learning limit.
+  - **Follow-up, Stage 14:** retry learning jobs that failed on the model server later, and check memory before loading the model.

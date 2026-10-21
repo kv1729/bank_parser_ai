@@ -160,11 +160,14 @@ class LLMProposer(Proposer):
         from bank_parser.learning.examples import few_shot, nearest     # examples imports this module
         shown = few_shot(nearest(self.examples, view)) if self.examples else ""
         prompt = llm_view.build_prompt(view, shown) + (f"\n\n{note}" if note else "")
+        ctx.llm_calls += 1
         try:
             reply = self.client.chat_json(self.model, llm_view.SYSTEM, prompt, llm_view.answer_schema(view))
         except LLMError as e:
+            ctx.llm_failures += 1
             ctx.notes.append(f"llm: {e}")
             return None
+        ctx.llm_retries += getattr(reply, "retries", 0)
         ctx.llm_tokens_left -= reply.tokens
         ctx.llm_tokens_used += reply.tokens
         try:

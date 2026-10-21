@@ -43,6 +43,7 @@ class LearningOutcome:
     reason: str = ""
     attempts: list = field(default_factory=list)    # metrics only; never statement content
     duration_ms: float = 0.0
+    model: dict = field(default_factory=dict)       # model calls, retries, failures, tokens for the job (D-028)
 
 
 @dataclass
@@ -61,6 +62,7 @@ class LearningContext:
         self.notes = []
         self.llm_tokens_left = llm_tokens
         self.llm_tokens_used = 0
+        self.llm_calls = self.llm_retries = self.llm_failures = 0     # reported per attempt (D-028)
         self.llm_view = None           # the table found for the local model (learning/llm_view.py)
 
     def next_version(self, bank_code, layout_id):
@@ -136,58 +138,68 @@ class TemplateAgent:
         return True, "", f"checked against {checked} other-layout documents"
 
     def learn(self, path, password=None, document_id=None):
+        with open_pdf(path, password, self.backend) as doc, open_pdf(path, password, "pdfplumber") as cells_doc:
+            return self.learn_document(doc, cells_doc, document_id)
+
+    def learn_document(self, doc, cells_doc, document_id=None):
+        """The learning loop on documents already open: `doc` (words) and `cells_doc` (ruled cells,
+        pdfplumber). Used by learn() and by evaluations on layout copies (Stage 10.8)."""
         t0 = time.perf_counter()
         deadline = t0 + self.budget.max_seconds
         attempts, reasons = [], []
 
         def done(status, template_id=None, reason=""):
-            return LearningOutcome(status, template_id, reason, attempts, round((time.perf_counter() - t0) * 1000, 1))
+            model = {"calls": ctx.llm_calls, "retries": ctx.llm_retries, "failures": ctx.llm_failures,
+                     "tokens": ctx.llm_tokens_used}
+            return LearningOutcome(status, template_id, reason, attempts, round((time.perf_counter() - t0) * 1000, 1),
+                                   model)
 
-        with open_pdf(path, password, self.backend) as doc, open_pdf(path, password, "pdfplumber") as cells_doc:
-            own_text = detection_text(doc)
-            ctx = LearningContext(doc, cells_doc, own_text, document_id, self.registry, self.budget.max_llm_tokens)
-            evaluated = 0
-            for proposer in self.proposers:
-                if not proposer.available():
-                    continue
-                if proposer.uses_llm and self.budget.max_llm_tokens <= 0:
-                    continue
-                for candidate in proposer.propose(ctx):
-                    refinements = 0
-                    while candidate is not None:
-                        if evaluated >= self.budget.max_candidates + self.budget.max_refinements:
-                            return done(LearningStatus.HUMAN_REVIEW, reason="; ".join(reasons + ["budget exhausted"]))
-                        if time.perf_counter() > deadline:
-                            return done(LearningStatus.HUMAN_REVIEW, reason="; ".join(reasons + ["time limit reached"]))
-                        evaluated += 1
-                        result = extract_with_template(doc, candidate, document_id, strategy="candidate")
-                        report = validate_statement(result.statement)
-                        ok, feedback, why = _accept(candidate, result, report)
-                        if ok:
-                            ok, feedback, why = self._regression(candidate, own_text)
-                        if ok and self.golden_check is not None:
-                            ok, golden_why = self.golden_check(self.registry.all() + [candidate])
-                            why, feedback = (f"{why}; {golden_why}", "") if ok else (golden_why, "golden_changed")
-                        attempts.append({"proposer": proposer.name, "layout": candidate.layout_id,
-                                         "columns": [c.role for c in candidate.table.columns],
-                                         "markers": len(candidate.markers), "rows": len(result.statement.transactions),
-                                         "validation": report.status.value, "accepted": ok, "reason": why,
-                                         "llm_tokens": ctx.llm_tokens_used})
-                        if ok:
-                            try:
-                                self.registry.save(candidate)
-                            except VersionConflict:
-                                # Another worker saved this version first; take the next one.
-                                candidate = candidate.with_version(
-                                    self.registry.next_version(candidate.bank_code, candidate.layout_id))
-                                self.registry.save(candidate)
-                            return done(LearningStatus.ACCEPTED, candidate.template_id, why)
-                        reasons.append(why)
-                        if refinements >= self.budget.max_refinements:
-                            break
-                        refinements += 1
-                        candidate = proposer.refine(ctx, candidate, feedback)
-                    if evaluated >= self.budget.max_candidates:
+        own_text = detection_text(doc)
+        ctx = LearningContext(doc, cells_doc, own_text, document_id, self.registry, self.budget.max_llm_tokens)
+        evaluated = 0
+        for proposer in self.proposers:
+            if not proposer.available():
+                ctx.notes.append(f"{proposer.name}: not available")    # never skipped silently (D-028)
+                continue
+            if proposer.uses_llm and self.budget.max_llm_tokens <= 0:
+                continue
+            for candidate in proposer.propose(ctx):
+                refinements = 0
+                while candidate is not None:
+                    if evaluated >= self.budget.max_candidates + self.budget.max_refinements:
+                        return done(LearningStatus.HUMAN_REVIEW, reason="; ".join(reasons + ["budget exhausted"]))
+                    if time.perf_counter() > deadline:
+                        return done(LearningStatus.HUMAN_REVIEW, reason="; ".join(reasons + ["time limit reached"]))
+                    evaluated += 1
+                    result = extract_with_template(doc, candidate, document_id, strategy="candidate")
+                    report = validate_statement(result.statement)
+                    ok, feedback, why = _accept(candidate, result, report)
+                    if ok:
+                        ok, feedback, why = self._regression(candidate, own_text)
+                    if ok and self.golden_check is not None:
+                        ok, golden_why = self.golden_check(self.registry.all() + [candidate])
+                        why, feedback = (f"{why}; {golden_why}", "") if ok else (golden_why, "golden_changed")
+                    attempts.append({"proposer": proposer.name, "layout": candidate.layout_id,
+                                     "columns": [c.role for c in candidate.table.columns],
+                                     "markers": len(candidate.markers), "rows": len(result.statement.transactions),
+                                     "validation": report.status.value, "accepted": ok, "reason": why,
+                                     "llm_tokens": ctx.llm_tokens_used, "llm_calls": ctx.llm_calls,
+                                     "llm_retries": ctx.llm_retries, "llm_failures": ctx.llm_failures})
+                    if ok:
+                        try:
+                            self.registry.save(candidate)
+                        except VersionConflict:
+                            # Another worker saved this version first; take the next one.
+                            candidate = candidate.with_version(
+                                self.registry.next_version(candidate.bank_code, candidate.layout_id))
+                            self.registry.save(candidate)
+                        return done(LearningStatus.ACCEPTED, candidate.template_id, why)
+                    reasons.append(why)
+                    if refinements >= self.budget.max_refinements:
                         break
-            reasons.extend(ctx.notes)
+                    refinements += 1
+                    candidate = proposer.refine(ctx, candidate, feedback)
+                if evaluated >= self.budget.max_candidates:
+                    break
+        reasons.extend(ctx.notes)
         return done(LearningStatus.HUMAN_REVIEW, reason="; ".join(reasons) or "no proposer produced a candidate")

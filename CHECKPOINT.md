@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-21 (Stage 10.1–10.7 done, D-023 – D-027). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-21 (Stage 10 done, D-023 – D-028). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -17,12 +17,12 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | A. Extraction core | 9 | 9 | ✅ |
 | B. Self-check of each extraction | 5 | 6 | 🟡 |
 | C. Regression safety (golden set) | 6 | 6 | ✅ |
-| D. AI agent (learning new layouts) | 7 | 9 | 🟡 |
+| D. AI agent (learning new layouts) | 9 | 9 | ✅ |
 | E. Confidence & autonomy | 0 | 5 | ⬜ |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 2 | 6 | 🟡 |
-| **Total** | **34** | **53** | **64%** |
+| **Total** | **36** | **53** | **68%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -71,9 +71,9 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | D3 | Local open-source model installed and selected (≤ 3 candidates, ≤ 2 tested) | ✅ | D-023: qwen3.5:9b, 10/10 identical; `experiments/llm_choice.py` | 10 |
 | D4 | AI proposer: reads the statement and proposes a template | ✅ | D-023: learned all 3 golden statements from scratch, identical; `experiments/llm_holdout.py`, `tests/test_llm_proposer.py` | 10 |
 | D5 | AI fallback extraction when no recipe or template fits; status `LEARNING`, then the result appears | ✅ | D-023 addendum: `experiments/pipeline_holdout.py` (3/3 identical to golden, 11–14 s), `tests/test_pipeline.py` | 10 |
-| D6 | Every AI result passes the same self-check (B) and regression gate (C) | ⬜ | | 10 |
+| D6 | Every AI result passes the same self-check (B) and regression gate (C) | ✅ | D-028: `test_every_proposer_is_refused_by_the_golden_gate` (rules, approved headings, model); `regress` PASS around the evaluation | 10 |
 | D7 | Learns from human corrections: flags and approvals become examples for the agent | ✅ | D-027: `training_examples`; approved headings 8/10 without the model, 0 wrong; calibration from corrections; `tests/test_examples.py` | 10 |
-| D8 | Agent measured on held-out statements (success rate, time, re-tries) | ⬜ | | 10 |
+| D8 | Agent measured on held-out statements (success rate, time, re-tries) | ✅ | D-028: model alone 12/12, app default 22/24 (both failures: model out of memory), 0 wrongly accepted; `experiments/agent_eval.py` | 10 |
 | D9 | Agent writes **its own review** of each statement it builds (what it checked, what it is unsure of, confidence per field); the owner reviews that review | ✅ | D-024: `self_review.py`, Agree/Disagree in `/review`, calibration; `tests/test_self_review.py` | 10 |
 
 ## E. Confidence & autonomy: removing the human

@@ -1,0 +1,1 @@
+- [Diagnostics never print cells](feedback-diagnostics-never-print-cells.md) — real-statement diagnostics print only counts/positions/heading-vocabulary words, never row or cell text

@@ -78,7 +78,7 @@
   <h1>Statement review</h1>
   <span class="muted">Mark each output that is wrong, or missing (printed on the statement but not extracted), add remarks, and save. Clicking a transaction scrolls the PDF to its page.</span>
   <span style="flex:1"></span>
-  <a href="/">Upload page</a>
+  <a href="/">Upload page</a> <a href="/autonomy">Agent autonomy</a>
 </header>
 <main>
   <aside id="sources"></aside>
@@ -223,7 +223,8 @@ async function renderOutput(doc, ex, token) {
   current = { docId: doc.id, extractionId: ex.id, txnCount, flags: new Set(review ? review.flags : []),
               missing: new Set(review ? review.missing || [] : []), remarks: review ? review.remarks : "",
               feedback: Object.assign({}, review ? review.agent_feedback || {} : {}),
-              sr: saved.extraction_id === ex.id ? saved.self_review : null };
+              sr: saved.extraction_id === ex.id ? saved.self_review : null,
+              routing: saved.extraction_id === ex.id ? saved.routing : null };
   dirty = false;
 
   const issueRows = new Set();
@@ -331,7 +332,7 @@ function goldenBox(gold, ex) {
   if (!g) return el("div", "Not golden yet. When every field is OK and saved, approve it as golden: from then on any change to its output is caught.", "muted");
   const changes = gold.differs || [];
   const box = el("div", null, "golden" + (changes.length ? " differs" : ""));
-  box.append(el("strong", `Golden v${g.version}`), el("span", ` · approved ${ist(g.approved_at)} · extraction #${g.extraction_id}${g.template_id ? " · " + g.template_id : ""}`, "muted"));
+  box.append(el("strong", `Golden v${g.version}`), el("span", ` · approved${g.approved_by === "agent" ? " by the agent (its layout earned autonomy; you can still mark it)" : ""} ${ist(g.approved_at)} · extraction #${g.extraction_id}${g.template_id ? " · " + g.template_id : ""}`, "muted"));
   if (changes.length) {
     box.append(el("div", `This extraction differs from the golden output in ${changes.length} field(s). If the new output is right, check it and approve again (v${g.version + 1}); v${g.version} is kept.`));
     const ul = el("ul");
@@ -382,6 +383,17 @@ function confTag(key) {
 function selfReviewBox(sr, cal) {
   const box = el("div", null, "selfrev");
   box.append(el("strong", "Agent's self-review"), el("span", "  " + sr.summary, "muted"));
+  if (sr.confidence) {               // confidence in the whole statement (Stage 11.2, D-029)
+    const c = sr.confidence;
+    const pill = el("span", "Confidence: " + c.level, "conf " + c.level);
+    pill.title = c.reasons.length ? "Why not high: " + c.reasons.join(", ") : "Nothing lowers it"
+      + (c.covered_by_track_record && c.covered_by_track_record.length ? "; left to the layout's track record: " + c.covered_by_track_record.join(", ") : "");
+    box.append(" ", pill);
+  }
+  const R = current.routing;          // who checks it (Stage 11.3, D-029)
+  if (R) box.append(el("div", R.required
+      ? `Your review is needed (${R.reason.replaceAll("_", " ")}` + (R.layout ? `; layout ${R.layout}: ${R.run} of ${R.threshold} reviews in a row without a correction` : "") + ")."
+      : `Your review is not needed: confident, and layout ${R.layout} has earned autonomy (${R.run} of ${R.threshold}).`, "muted"));
   const L = sr.learning;
   if (L && L.template) {
     const how = L.proposer ? `learned by ${L.proposer}` + (L.columns ? `, columns named ${L.columns}` : "") + (L.model ? ` (${L.model})` : "")

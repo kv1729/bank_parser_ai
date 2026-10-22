@@ -80,6 +80,16 @@ CREATE TABLE IF NOT EXISTS golden_snapshots (
     approved_at       TEXT NOT NULL,
     UNIQUE (document_id, version)
 );
+-- Layout drift (Stage 11.5, D-029): a statement from a bank we have templates for that none of
+-- them reads. Codes and layout ids only.
+CREATE TABLE IF NOT EXISTS drift_events (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id   TEXT NOT NULL REFERENCES documents(id),
+    bank_code     TEXT NOT NULL,
+    layout        TEXT,                        -- the known layout that failed, if one matched
+    reason        TEXT NOT NULL,               -- template_failed | new_layout_for_known_bank
+    created_at    TEXT NOT NULL
+);
 -- Training examples (Stage 10.7, D-027): the owner's approvals and corrections in a form the
 -- template agent and the self-review use. Append-only; never statement values, only heading
 -- words, roles, field names, counts and verdicts. `example_key` makes re-recording a no-op.
@@ -121,6 +131,12 @@ class Database:
                 c.execute("ALTER TABLE reviews ADD COLUMN agent_feedback_json TEXT")
             if "self_review_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
                 c.execute("ALTER TABLE extractions ADD COLUMN self_review_json TEXT")
+            # Additive migration (D-029): whether the owner must review this extraction, and why.
+            if "routing_json" not in {r["name"] for r in c.execute("PRAGMA table_info(extractions)")}:
+                c.execute("ALTER TABLE extractions ADD COLUMN routing_json TEXT")
+            # Additive migration (D-029): who approved a golden version, the owner or the agent.
+            if "approved_by" not in {r["name"] for r in c.execute("PRAGMA table_info(golden_snapshots)")}:
+                c.execute("ALTER TABLE golden_snapshots ADD COLUMN approved_by TEXT NOT NULL DEFAULT 'owner'")
             if "occurred_at" not in {r["name"] for r in c.execute("PRAGMA table_info(training_examples)")}:
                 c.execute("ALTER TABLE training_examples ADD COLUMN occurred_at TEXT")
 
@@ -175,16 +191,17 @@ class Database:
 
     # --- extractions --------------------------------------------------------
     def add_extraction(self, doc_id, workflow, strategy, template_id, report, statement, problems, timings,
-                       self_review=None):
+                       self_review=None, routing=None):
         with self.connect() as c:
             cur = c.execute(
                 """INSERT INTO extractions(document_id, workflow, strategy, template_id, validation_status, verified,
-                   report_json, statement_json, problems_json, timings_json, created_at, self_review_json)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   report_json, statement_json, problems_json, timings_json, created_at, self_review_json, routing_json)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (doc_id, workflow, strategy, template_id, report["status"], int(report["verified"]),
                  json.dumps(report), json.dumps(statement) if statement is not None else None,
                  json.dumps(problems), json.dumps(timings), utcnow(),
-                 json.dumps(self_review) if self_review is not None else None))
+                 json.dumps(self_review) if self_review is not None else None,
+                 json.dumps(routing) if routing is not None else None))
             return cur.lastrowid
 
     def latest_extraction(self, doc_id):
@@ -198,7 +215,7 @@ class Database:
     @staticmethod
     def _extraction_row(row):
         out = dict(row)
-        for k in ("report_json", "statement_json", "problems_json", "timings_json", "self_review_json"):
+        for k in ("report_json", "statement_json", "problems_json", "timings_json", "self_review_json", "routing_json"):
             out[k[:-5]] = json.loads(out.pop(k)) if out.get(k) else None
         return out
 
@@ -288,8 +305,9 @@ class Database:
 
     # --- golden statements ----------------------------------------------------------
     def add_golden(self, doc_id, extraction_id, snapshot, workflow, template_id, backend, engine_commit,
-                   validation_status, warnings, password_source):
-        """Store a new golden version for the document (never replaces an older one)."""
+                   validation_status, warnings, password_source, approved_by="owner"):
+        """Store a new golden version for the document (never replaces an older one).
+        `approved_by`: "owner", or "agent" for a layout that has earned autonomy (D-029)."""
         with self.connect() as c:
             c.execute("BEGIN IMMEDIATE")
             try:
@@ -297,10 +315,10 @@ class Database:
                                     (doc_id,)).fetchone()[0]
                 c.execute("""INSERT INTO golden_snapshots(document_id, version, extraction_id, snapshot_json, workflow,
                                template_id, backend, engine_commit, validation_status, warnings_json, password_source,
-                               approved_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                               approved_at, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                           (doc_id, version, extraction_id, json.dumps(snapshot, sort_keys=True), workflow, template_id,
                            backend, engine_commit, validation_status, json.dumps(sorted(set(warnings))),
-                           password_source, utcnow()))
+                           password_source, utcnow(), approved_by))
                 c.execute("COMMIT")
             except BaseException:
                 c.execute("ROLLBACK")
@@ -391,6 +409,18 @@ class Database:
                                  ORDER BY {when}, id""",
                              (layout, layout + "/%", t, t, i)).fetchall()
         return [{"kind": r["kind"], **json.loads(r["payload_json"])} for r in rows]
+
+    # --- layout drift (Stage 11.5, D-029) -----------------------------------------------
+    def add_drift(self, document_id, bank_code, layout, reason):
+        with self.connect() as c:
+            c.execute("""INSERT INTO drift_events(document_id, bank_code, layout, reason, created_at)
+                         VALUES (?, ?, ?, ?, ?)""", (document_id, bank_code, layout, reason, utcnow()))
+
+    def drift_events(self, document_id=None, limit=100):
+        with self.connect() as c:
+            rows = c.execute("SELECT * FROM drift_events" + (" WHERE document_id = ?" if document_id else "")
+                             + " ORDER BY id DESC LIMIT ?", ((document_id, limit) if document_id else (limit,))).fetchall()
+        return [dict(r) for r in rows]
 
     def review_counts(self):
         """{document_id: number of outputs marked wrong or missing} for each document's latest review."""

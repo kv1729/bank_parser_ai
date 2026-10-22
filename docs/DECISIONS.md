@@ -728,3 +728,39 @@ The review screen will show that review beside the output. The owner gives feedb
 - **Limits:**
   - The model needs about 6 GB of free memory. With less it fails to load: the job ends in human review, never with a wrong result. From cold, a call can take about 4.5 minutes, close to the 300 s learning limit.
   - **Follow-up, Stage 14:** retry learning jobs that failed on the model server later, and check memory before loading the model.
+
+## D-029 — Confidence & autonomy (Stage 11, CHECKPOINT E1–E5)
+
+- **Date:** 2026-10-21
+- **Owner:** approved the plan: small steps, each committed and pushed (11.1–11.7).
+- **Problem:** every statement needed the owner, however often its layout had been right, and nothing measured whether that could change.
+- **Decision:**
+  - **Track record per layout (11.1, `autonomy.track_record`).** Each statement read with a layout (any version) counts as:
+    - **matched:** reviewed with nothing marked, or approved as golden by the owner;
+    - **corrected:** some review of it, on any extraction, marked something;
+    - **unreviewed:** not reviewed yet.
+
+    The **run** is the number of matches since the last correction, newest first; unreviewed statements neither break nor extend it. A layout has **earned autonomy** at run ≥ `BANK_PARSER_AUTONOMY_THRESHOLD` (default 10). Only the owner's reviews and approvals count: the agent never vouches for itself.
+  - **Confidence per statement (11.2, `self_review.with_confidence`).**
+    - **High:** validation passes with only expected warnings (no opening balance), the money is verified, nothing is rated low, no field the layout fills is missing, and nothing else is listed to check. **Low:** validation failed or something is rated low. **Medium:** anything in between. The reasons are codes.
+    - **Layout-wide worries do not lower it.** Text fields read from a position or by a general rule, and columns named by the model, are the same on every statement of a layout, so they are listed as covered by its track record.
+    - **Evidence:** all 8 known-correct statements are high.
+  - **Routing (11.3, `autonomy.route`).** The owner checks a statement unless it is verified, its confidence is high and its layout has earned autonomy. Every extraction stores the decision with a reason code (`extractions.routing_json`). Statuses keep their meaning (EXTRACTED = verified); "needs your review" is shown separately.
+  - **The agent approves golden snapshots (11.4).**
+    - **Off by default** (`BANK_PARSER_AUTONOMY=on`).
+    - **What it does:** a statement routed as not needing the owner becomes golden with `approved_by = agent`, through the same re-extraction rule as the owner's approval.
+    - **Limits:**
+      - only for statements without a golden;
+      - never a new version of a changed golden (that stays the owner's, D-022);
+      - only the expected warning;
+      - agent approvals never count in the track record and record no training examples.
+  - **Drift (11.5, `autonomy.detect_drift`).**
+    - **What is recorded:** a statement no template reads, from a bank that has templates, is stored in `drift_events`, with reason `template_failed` (a known layout's markers match but its reading fails) or `new_layout_for_known_bank`.
+    - **What happens next:** the agent learns the new layout as before, old versions are kept, and the new layout starts its own track record.
+  - **Dashboard (11.6, `/autonomy`).** Layouts with their run against the threshold, matched, corrected and not-reviewed counts, verified now, goldens by owner and agent, statements waiting for review and why, corrections per week, and drift. Counts and codes only.
+- **Evidence:** `tests/test_autonomy.py` (synthetic histories: run and reset, versions sharing a record, owner vs agent goldens, routing, agent approval on and off and never twice, drift, dashboard); the full suite passes; `regress` PASS after every step. Autonomy decides who checks a statement, never how it is read, so golden outputs cannot change.
+- **Where the real layouts stand (2026-10-21):** SBI (2 layouts) and HDFC at run 1 of 10; BOI and ICICI at 0, because their first reviews on 2026-10-14 marked fields that were fixed in code before approval. None has earned autonomy; that needs about 10 more statements per layout.
+- **Open owner decisions:**
+  1. the threshold (10 in a row);
+  2. whether a statement corrected and later approved after a code fix should count as a correction (it does now);
+  3. when to switch `BANK_PARSER_AUTONOMY=on`.

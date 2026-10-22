@@ -252,8 +252,70 @@ def build_self_review(statement, report, field_sources=None, template=None, job=
     things = len(unsure)
     head_line = (f"Money verified on {verified_rows} of {n} rows" if verified_rows else
                  "Money could not be verified" if n else "No transactions extracted")
-    return {"version": 1, "summary": f"{head_line}; {things} thing{'s' if things != 1 else ''} to check.",
-            "checked": checked, "unsure": unsure, "fields": fields, "learning": learning}
+    sr = {"version": 1, "summary": f"{head_line}; {things} thing{'s' if things != 1 else ''} to check.",
+          "checked": checked, "unsure": unsure, "fields": fields, "learning": learning,
+          "basis": _basis(statement, report, template)}
+    return with_confidence(sr)
+
+
+# --- confidence per statement (Stage 11.2, D-029) ------------------------------------------------
+
+# Warnings that a correct statement can have: it prints no opening balance (its oldest row
+# cannot be checked) or its rows are newest first.
+EXPECTED_WARNINGS = ("no_opening_balance",)
+# Items that are always listed and say nothing about this statement in particular.
+STANDING_ITEMS = ("text:descriptions",)
+# Worries about how the layout reads text no arithmetic can check (a name taken from a position,
+# columns named by the model). They are the same on every statement of the layout, so the layout's
+# track record answers them (11.1): they do not lower the confidence, they are listed as covered.
+TRACK_RECORD_ITEMS = ("field:", "learning:")
+
+
+def with_confidence(sr):
+    """Add `confidence` = {level, reasons, covered_by_track_record} to a self-review: how sure the
+    system is of the whole statement. high: validation passed (only expected warnings), the money is
+    verified, nothing is rated low, no field the layout fills is missing, and nothing else is listed
+    to check except what the layout's track record covers. low: validation failed or something is
+    rated low. medium: anything in between. Reasons are codes and field names only."""
+    basis = sr.get("basis") or {}
+    reasons, low = [], False
+    status = basis.get("validation")
+    if status == "FAIL":
+        reasons.append("validation_failed")
+        low = True
+    elif status not in ("PASS", "WARN"):
+        reasons.append("not_validated")
+    for code in basis.get("warnings", []):
+        if code not in EXPECTED_WARNINGS:
+            reasons.append(f"warning:{code}")
+    if not basis.get("template"):
+        reasons.append("no_template")
+    if not basis.get("rows"):
+        reasons.append("no_transactions")
+        low = True
+    fields = sr.get("fields", {})
+    if any(fields.get(f"transactions.{c}", {}).get("level") != "high" for c in MONEY_COLUMNS):
+        reasons.append("money_not_verified")
+    for key, f in sorted(fields.items()):
+        if f.get("level") == "low":
+            reasons.append(f"low:{key}")
+            low = True
+    for key in basis.get("expected", []):
+        if fields.get(key, {}).get("level") == "missing":
+            reasons.append(f"missing:{key}")
+    covered = []
+    for u in sr.get("unsure", []):
+        if u.get("muted") or u["id"] in STANDING_ITEMS or u["id"].endswith(":no_opening_balance"):
+            continue
+        if u["id"].startswith(TRACK_RECORD_ITEMS) and u.get("level") != "low":
+            covered.append(item_kind(u["id"]))
+            continue
+        reasons.append(f"check:{item_kind(u['id'])}")
+        low = low or u.get("level") == "low"
+    reasons = list(dict.fromkeys(reasons))
+    sr["confidence"] = {"level": "low" if low else "medium" if reasons else "high", "reasons": reasons,
+                        "covered_by_track_record": covered}
+    return sr
 
 
 def calibration(self_review, review):
@@ -334,4 +396,22 @@ def apply_history(self_review, history, extraction_id=None):
                               + f"; {things} thing{'s' if things != 1 else ''} to check.")
     self_review["history"] = {"corrections": sum(1 for h in history if h["kind"] == "field_correction"),
                               "verdicts": sum(1 for h in history if h["kind"] == "verdict")}
-    return self_review
+    return with_confidence(self_review)
+
+
+def ensure_confidence(sr, statement, report, template=None):
+    """Self-reviews stored before 11.2 have no confidence: add it from the stored report."""
+    if not sr or "confidence" in sr:
+        return sr
+    sr["basis"] = _basis(statement, report, template)
+    return with_confidence(sr)
+
+
+def _basis(statement, report, template):
+    """What the statement-level confidence is decided from (codes and counts only)."""
+    expected = sorted({t for r in (template.header_rules if template is not None else ())
+                       for t in r.targets if t.startswith(("header.", "summary.")) and t.count(".") == 1})
+    warnings = sorted({i["code"] for c in (report or {}).get("checks", []) for i in c.get("issues", [])
+                       if i.get("severity") == "WARN"})
+    return {"validation": (report or {}).get("status"), "warnings": warnings, "expected": expected,
+            "template": template is not None, "rows": len((statement or {}).get("transactions") or [])}

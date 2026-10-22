@@ -37,7 +37,7 @@
 <body>
 <main>
   <h1>Statement Parser</h1>
-  <div><a href="/review" style="color:var(--accent)">Review extractions against the PDF →</a></div>
+  <div><a href="/review" style="color:var(--accent)">Review extractions against the PDF →</a> · <a href="/autonomy" style="color:var(--accent)">Agent autonomy →</a></div>
   <div class="muted">Text-based PDF bank statements. Processed locally; nothing is sent to external services.</div>
 
   <div class="card">
@@ -67,6 +67,22 @@
 // All statement data is inserted with textContent, never innerHTML: descriptions are untrusted text.
 const $ = s => document.querySelector(s);
 function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+// Who checks this statement (Stage 11.3, D-029): codes from the server, shown as plain text.
+const ROUTING_TEXT = { not_verified: "needed: the arithmetic is not verified", confidence_low: "needed: something is rated low",
+  confidence_medium: "needed: something is listed to check", no_layout: "needed: the layout is not learned yet",
+  layout_not_earned: "needed: this layout has not earned autonomy yet", earned_and_high: "not needed: confident, and the layout has earned it" };
+// A known bank whose statement none of its layouts read (Stage 11.5, D-029).
+function driftText(events) {
+  if (!events || !events.length) return null;
+  const d = events[0];
+  return d.reason === "template_failed" ? `the ${d.layout} layout no longer reads this statement: learning a new version (the old one is kept)`
+                                        : `a new layout from bank ${d.bank_code}: learning it (its track record starts at 0)`;
+}
+function routingText(r) {
+  if (!r) return null;
+  const run = r.layout ? ` (${r.run} of ${r.threshold} reviews in a row without a correction)` : "";
+  return (ROUTING_TEXT[r.reason] || r.reason) + (r.reason === "layout_not_earned" ? run : "");
+}
 function pill(v) { return el("span", v || "-", "pill " + (v || "")); }
 let current = null, timer = null;
 
@@ -98,7 +114,7 @@ async function loadDocs() {
 async function show(id) {
   current = id; clearTimeout(timer);
   const r = await fetch("/api/documents/" + id); if (!r.ok) return;
-  const { document: doc, extraction: ex, template_job: job } = await r.json();
+  const { document: doc, extraction: ex, template_job: job, drift } = await r.json();
   $("#detail").hidden = false;
   $("#detail-title").textContent = (doc.original_name || "Statement") + " — " + doc.status;
 
@@ -109,7 +125,9 @@ async function show(id) {
     ["Holder address", h.account_holder_address], ["Account number", h.account_number], ["IFSC", h.ifsc],
     ["Period", h.period_start ? h.period_start + " → " + h.period_end : null], ["Opening balance", h.opening_balance],
     ["Closing balance", h.closing_balance], ["Extraction path", ex ? ex.workflow + " · " + ex.strategy + (ex.template_id ? " · " + ex.template_id : "") : null],
-    ["Status", doc.error || doc.status]];
+    ["Status", doc.error || doc.status],
+    ["Your review", routingText(ex && ex.routing)],
+    ["Layout change", driftText(drift)]];
   for (const [k, v] of fields) { const d = el("div", null, "kv"); d.append(el("b", k), el("span", v ?? "—")); hdr.append(d); }
   if (doc.status === "NEEDS_PASSWORD") {
     const f = el("form"); const i = el("input"); i.type = "password"; i.name = "password"; i.placeholder = "PDF password";

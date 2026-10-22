@@ -1,6 +1,6 @@
 # Checkpoint — how far are we from the goal?
 
-*Updated 2026-10-21 (Stage 10 done, D-023 – D-028). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
+*Updated 2026-10-21 (Stage 10 done, Stage 11 built, D-023 – D-029). This file answers "how close are we?". `STAGES.md` answers "what are we doing next, and how?". `docs/DECISIONS.md` answers "why?".*
 
 ## The goal
 
@@ -18,11 +18,11 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 | B. Self-check of each extraction | 5 | 6 | 🟡 |
 | C. Regression safety (golden set) | 6 | 6 | ✅ |
 | D. AI agent (learning new layouts) | 9 | 9 | ✅ |
-| E. Confidence & autonomy | 0 | 5 | ⬜ |
+| E. Confidence & autonomy | 4 | 5 | 🟡 |
 | F. Intake & secrets | 2 | 5 | 🟡 |
 | G. Production readiness | 3 | 7 | 🟡 |
 | H. Compliance (India now, US later) | 2 | 6 | 🟡 |
-| **Total** | **36** | **53** | **68%** |
+| **Total** | **40** | **53** | **75%** |
 
 ✅ done · 🟡 partly · ⬜ not started. The *Stage* column says where each open item is planned.
 
@@ -80,11 +80,11 @@ Upload any text-based bank statement and get its data back **fast, verified and 
 
 | # | Capability | Status | Evidence / where | Stage |
 |---|---|---|---|---|
-| E1 | Agent's proposals agree with human approvals on a measured track record | ⬜ | | 11 |
-| E2 | Agent may approve golden snapshots for a layout once E1 holds for it | ⬜ | | 11 |
-| E3 | Low confidence routes to a human automatically, and only then | ⬜ | | 11 |
-| E4 | Drift detection: a known bank changes its layout → new version learned, old kept | ⬜ | | 11 |
-| E5 | Autonomy dashboard: layouts, golden counts, pass rates, human interventions per week | ⬜ | | 11 |
+| E1 | Agent's proposals agree with human approvals on a measured track record | 🟡 | D-029: measured per layout (`/autonomy`); no layout has earned it yet (needs about 10 reviewed statements each) | 11 |
+| E2 | Agent may approve golden snapshots for a layout once E1 holds for it | ✅ | D-029: `check_agent_approvable`, off by default (`BANK_PARSER_AUTONOMY`); never a new version of a changed golden | 11 |
+| E3 | Low confidence routes to a human automatically, and only then | ✅ | D-029: confidence per statement + `extractions.routing_json` | 11 |
+| E4 | Drift detection: a known bank changes its layout → new version learned, old kept | ✅ | D-029: `drift_events`; the agent learns the new layout, old versions kept | 11 |
+| E5 | Autonomy dashboard: layouts, golden counts, pass rates, human interventions per week | ✅ | D-029: `/autonomy` | 11 |
 
 ## F. Intake & secrets
 

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Autonomy</title>
+<style>
+  :root { --bg:#f6f6f4; --fg:#1d1d1b; --muted:#6b6b66; --line:#dcdcd6; --card:#fff;
+          --ok:#1f7a3a; --warn:#9a6700; --bad:#b42318; --accent:#2f5bd3; --bar:#e4e4de; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#151514; --fg:#ececea; --muted:#9d9d97; --line:#33332f; --card:#1e1e1c;
+            --ok:#4cc172; --warn:#e0a92e; --bad:#f2725f; --accent:#7f9cf5; --bar:#2c2c29; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:13px/1.45 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:16px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--card); flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; } header a { color:var(--accent); }
+  main { max-width:1100px; margin:0 auto; padding:16px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  h2 { font-size:14px; margin:0 0 8px; }
+  .muted { color:var(--muted); }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+  th, td { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { font-size:11px; color:var(--muted); font-weight:600; }
+  td.num, th.num { text-align:right; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; border:1px solid currentColor; }
+  .yes { color:var(--ok); } .no { color:var(--muted); } .bad { color:var(--bad); }
+  .bar { position:relative; display:inline-block; width:120px; height:8px; background:var(--bar); border-radius:4px; vertical-align:middle; margin-right:6px; }
+  .bar span { position:absolute; left:0; top:0; bottom:0; background:var(--ok); border-radius:4px; }
+  .empty { color:var(--muted); padding:8px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agent autonomy</h1>
+  <span id="mode" class="muted"></span>
+  <a href="/">Upload</a> <a href="/review">Review</a>
+</header>
+<main>
+  <section>
+    <h2>Layouts</h2>
+    <p class="muted">A layout earns autonomy after the threshold number of statements in a row that you reviewed without a correction. Only your reviews and approvals count.</p>
+    <div class="scroll"><table id="layouts"><thead><tr>
+      <th>Layout</th><th class="num">Versions</th><th>Run toward autonomy</th><th>Earned</th>
+      <th class="num">Statements</th><th class="num">Matched</th><th class="num">Corrected</th><th class="num">Not reviewed</th>
+      <th class="num">Verified now</th><th class="num">Golden (you / agent)</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section>
+    <h2>Waiting for your review</h2>
+    <div class="scroll"><table id="waiting"><thead><tr><th>Statement</th><th>Layout</th><th>Why</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section>
+    <h2>Your corrections per week</h2>
+    <div class="scroll"><table id="weeks"><thead><tr><th>Week</th><th class="num">Reviews</th><th class="num">With a correction</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section>
+    <h2>Layout changes (drift)</h2>
+    <div class="scroll"><table id="drift"><thead><tr><th>When</th><th>Bank</th><th>Layout</th><th>What happened</th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+<script>
+// Everything is inserted with textContent: the server sends codes, ids and counts only (Stage 11.6, D-029).
+const $ = s => document.querySelector(s);
+function el(tag, text, cls) { const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function cell(tr, v, cls) { const td = el("td", v == null ? "—" : String(v), cls); tr.append(td); return td; }
+function fill(id, rows, render, empty) {
+  const tb = $(id + " tbody"); tb.replaceChildren();
+  if (!rows.length) { const tr = el("tr"); const td = el("td", empty, "empty"); td.colSpan = 10; tr.append(td); tb.append(tr); return; }
+  for (const r of rows) tb.append(render(r));
+}
+const WHY = { not_verified: "arithmetic not verified", confidence_low: "something is rated low", confidence_medium: "something is listed to check",
+  no_layout: "layout not learned yet", layout_not_earned: "layout has not earned autonomy", before_routing: "extracted before routing existed" };
+const DRIFT = { template_failed: "known layout no longer reads it; learning a new version", new_layout_for_known_bank: "new layout from this bank; learning it" };
+
+async function load() {
+  const r = await fetch("/api/autonomy/dashboard"); if (!r.ok) return;
+  const d = await r.json();
+  $("#mode").textContent = `Threshold: ${d.threshold} in a row · agent approval ${d.enabled ? "ON" : "off (BANK_PARSER_AUTONOMY=on to allow it)"}`;
+  fill("#layouts", d.layouts, L => {
+    const tr = el("tr");
+    cell(tr, L.layout); cell(tr, L.versions, "num");
+    const run = cell(tr, null); run.textContent = "";
+    const bar = el("span", null, "bar"); const fillb = el("span"); fillb.style.width = Math.min(100, d.threshold ? 100 * L.run / d.threshold : 100) + "%";
+    bar.append(fillb); run.append(bar, el("span", `${L.run} of ${d.threshold}`));
+    const e = cell(tr, null); e.textContent = ""; e.append(el("span", L.earned ? "earned" : "not yet", "pill " + (L.earned ? "yes" : "no")));
+    cell(tr, L.statements, "num"); cell(tr, L.matched, "num"); cell(tr, L.corrected, "num" + (L.corrected ? " bad" : "")); cell(tr, L.unreviewed, "num");
+    cell(tr, L.statements_now ? `${L.verified} of ${L.statements_now}` : "—", "num");
+    cell(tr, `${L.golden_by_owner} / ${L.golden_by_agent}`, "num");
+    return tr;
+  }, "No layouts yet.");
+  fill("#waiting", d.waiting, w => { const tr = el("tr"); cell(tr, w.document); cell(tr, w.layout); cell(tr, WHY[w.reason] || w.reason); return tr; }, "Nothing is waiting for you.");
+  fill("#weeks", d.interventions, w => { const tr = el("tr"); cell(tr, w.week); cell(tr, w.reviews, "num"); cell(tr, w.corrected, "num"); return tr; }, "No corrections yet.");
+  fill("#drift", d.drift, x => { const tr = el("tr"); cell(tr, (x.created_at || "").slice(0, 10)); cell(tr, x.bank_code); cell(tr, x.layout); cell(tr, DRIFT[x.reason] || x.reason); return tr; }, "No layout changes seen.");
+}
+load();
+</script>
+</body>
+</html>

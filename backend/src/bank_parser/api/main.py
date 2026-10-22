@@ -13,6 +13,7 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Response, UploadFi
 from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
+from bank_parser.autonomy import dashboard, track_record
 from bank_parser.config import Settings
 from bank_parser.golden import GoldenError, check_approvable, diff, password_candidates, snapshot
 from bank_parser.pdf import MalformedPdf, PasswordRequired, open_pdf
@@ -20,7 +21,7 @@ from bank_parser.pdf.render import render_page_png
 from bank_parser.pipeline import DocStatus, Processor
 from bank_parser.review import PasswordVault, ReviewError, ReviewSources, SourceDir, validate_agent_feedback, validate_review
 from bank_parser.learning.examples import record_golden_file, record_review
-from bank_parser.self_review import apply_history, build_self_review, calibration
+from bank_parser.self_review import apply_history, build_self_review, calibration, ensure_confidence
 from bank_parser.storage import UploadTooLarge
 from bank_parser.templates import template_to_dict
 
@@ -59,6 +60,10 @@ def create_app(settings=None, learning_mode="process"):
     @app.get("/review", include_in_schema=False)
     def review_page():
         return FileResponse(settings.frontend_dir / "review.html")
+
+    @app.get("/autonomy", include_in_schema=False)
+    def autonomy_page():
+        return FileResponse(settings.frontend_dir / "autonomy.html")
 
     @app.post("/api/documents")
     async def upload(file: UploadFile = File(...), password: str | None = Form(None), reprocess: bool = Form(False)):
@@ -102,6 +107,9 @@ def create_app(settings=None, learning_mode="process"):
                 job = None              # this document's job did not make this template
             ex["self_review"] = apply_history(build_self_review(ex["statement"], ex["report"], None, template, job),
                                               p.db.example_history(ex.get("template_id")), ex["id"])
+        elif ex and ex.get("self_review") is not None:
+            template = proc().registry.get(ex["template_id"]) if ex.get("template_id") else None
+            ensure_confidence(ex["self_review"], ex["statement"], ex["report"], template)
         return ex
 
     @app.get("/api/documents/{document_id}")
@@ -109,7 +117,12 @@ def create_app(settings=None, learning_mode="process"):
         p = proc()
         doc = require_document(document_id)
         return {"document": doc, "extraction": with_self_review(p.db.latest_extraction(document_id)),
-                "template_job": p.db.latest_template_job(document_id)}
+                "template_job": p.db.latest_template_job(document_id), "drift": p.db.drift_events(document_id)}
+
+    @app.get("/api/drift")
+    def drift_events():
+        """Statements from a known bank that no known layout read (Stage 11.5, D-029). Codes only."""
+        return proc().db.drift_events()
 
     @app.get("/api/templates")
     def list_templates():
@@ -217,7 +230,8 @@ def create_app(settings=None, learning_mode="process"):
         previous = None if review else p.db.previous_review(document_id, ex["id"])
         self_review = with_self_review(ex).get("self_review")
         return {"extraction_id": ex["id"], "review": review, "previous": previous,
-                "self_review": self_review, "calibration": calibration(self_review, review)}
+                "self_review": self_review, "calibration": calibration(self_review, review),
+                "routing": ex.get("routing")}
 
     @app.put("/api/documents/{document_id}/review")
     def save_review(document_id: str, body: dict = Body(...)):
@@ -241,6 +255,20 @@ def create_app(settings=None, learning_mode="process"):
                       saved["agent_feedback"], with_self_review(ex).get("self_review"), saved["updated_at"])
         return saved
 
+    @app.get("/api/autonomy")
+    def autonomy_status():
+        """Each layout's track record with the owner (Stage 11, D-029). Counts only."""
+        return {"threshold": settings.autonomy_threshold, "enabled": settings.autonomy,
+                "layouts": track_record(proc().db, settings.autonomy_threshold)}
+
+    @app.get("/api/autonomy/dashboard")
+    def autonomy_dashboard():
+        """The autonomy page (Stage 11.6): layouts, goldens, pass rates, interventions, drift, waiting."""
+        p = proc()
+        p.registry.reload()
+        return {"enabled": settings.autonomy,
+                **dashboard(p.db, settings.autonomy_threshold, p.registry.all(include_unapproved=True))}
+
     @app.get("/api/training-examples/summary")
     def training_examples_summary():
         """How many examples the agent has learned from the owner (counts only)."""
@@ -252,7 +280,7 @@ def create_app(settings=None, learning_mode="process"):
     def golden_info(g):
         return None if g is None else {k: g[k] for k in ("version", "extraction_id", "workflow", "template_id",
                                                          "backend", "engine_commit", "validation_status", "warnings",
-                                                         "approved_at")}
+                                                         "approved_at", "approved_by")}
 
     @app.get("/api/documents/{document_id}/golden")
     def get_golden(document_id: str):

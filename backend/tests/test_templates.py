@@ -79,7 +79,7 @@ def test_detection_picks_own_layout_only(committed, path, layout):
 def test_markers_contain_only_label_vocabulary(committed):
     for t in committed.all():
         for marker in t.markers:
-            assert all(w.strip("()").lower() in LABEL_VOCABULARY for w in marker.split())
+            assert all(w.strip("().:").lower() in LABEL_VOCABULARY for w in marker.split())   # as markers.py: "No." is a label
 
 
 def test_markers_never_include_personal_values():
